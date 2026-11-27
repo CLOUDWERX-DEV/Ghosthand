@@ -102,12 +102,14 @@ If you will do more than one call (UI testing, a walkthrough, anything with step
 ghosthand session start --who Claude --reason "UI testing the settings app" --for 30m
 ```
 
-The user sees one card with your reason, what it covers and how long, and a pill stays on their screen with a time-left and an End button. After they allow it, calls inside the scope run without a card. Rules:
+The user sees one card with your reason, what it covers and how long, and a pill stays on their screen (above every other window) with who is driving, the scope, the time left and an End button. The pill turns amber in the last minute. After they allow it, calls inside the scope run without a card. Rules:
 
 - **Give a real reason and a fair duration.** 30 minutes is the default; ask for what the job needs, not the maximum. `--scope mouse` if you won't type.
-- **A session never covers more than was approved.** If it was `mouse` only, typing asks again.
+- **A session never covers more than was approved.** If it was `mouse` only, typing asks again (and the reply carries a hint to start a new one with `--scope both`). Decide the scope up front: if you might type, ask for both.
+- **Asking again is free.** `session start` while a session that covers the request is already on returns `already_on` with the time left and shows no card, so you can call it at the top of every task without checking first.
 - **Denied or no answer (exit 4): stop and tell the user.** Don't retry.
 - **It ends** on the time, after 10 idle minutes, if the user ends or revokes it (exit 3), or when the screen locks. Check with `ghosthand session status`, and end it yourself with `ghosthand session end` when the job is done.
+- **Hints.** A reply may end with a line starting `Ghosthand:` after a successful run (over MCP: `hint`). It is advice, not an error: usually "start a session instead of a card per call", or "your session is too narrow". Follow it before the next call.
 - Over MCP the same thing is the `session` tool with `action` `start`, `status` or `end`.
 
 ## Keyboard
@@ -169,6 +171,10 @@ The user is watching. A card shows your `--who` and `--reason`, then a tag and r
 - Exit 5: the overlay isn't running and there's no dialog tool. `ghosthand doctor` shows which.
 - The click lands in the wrong place: re-take a screenshot, compare its size to `ghosthand info`, and recompute. Don't just offset.
 - Nothing happens on click: you probably need a `move` and a short `wait` first so the target sees the hover.
+
+## Keeping this current
+
+The skill, the overlay and the rules for your instructions file ship inside the binary and change between releases. After upgrading, `ghosthand skill install --all` refreshes the skill in every agent that is installed, and `ghosthand rules install` keeps the short rules block in your agents' global instructions files up to date (`ghosthand rules status` and `ghosthand doctor` say what is out of date). `ghosthand overlay` replaces a stale overlay by itself when it starts.
 
 ## If your host prefers MCP
 

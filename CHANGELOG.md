@@ -2,6 +2,24 @@
 
 All notable changes to Ghosthand are in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.5.0] - 2026-11-27
+
+Agents get the "ask once" rule before their first call, and the little annoyances around upgrades and sessions are gone.
+
+### Added
+
+- **`ghosthand rules [install|remove|status] [FILE...]`**: a short, marked block of rules for an agent's global instructions file (the one it reads on every start: Claude Code, Codex, Antigravity, opencode). It tells an agent to ask for one session instead of a card per call and never to go around the gate. Installing again updates it in place, removing it leaves the rest of the file as it was, it never creates a file, and `--dry-run` shows what would change. See `docs/agent-rules.md`.
+- **`ghosthand skill install --all`** installs the skill into the skills folder of every agent that is installed.
+- **`session start` on a session that is already on** and covers the request returns `already_on` and the time left, with no second card. An agent can call it at the top of every task.
+- **A hint when a session is too narrow** (typing inside a mouse session): the reply says to start a new one with `--scope both`.
+- The pill shows who is driving, turns amber for the last minute, and can sit at the top (`"pill_position": "top"` in the config).
+- The MCP server's instructions carry the "ask once" rule, so MCP clients get it without installing anything.
+- `ghosthand doctor` flags an out of date overlay and lists the agent rules in each global agent file.
+
+### Fixed
+
+- **A stale overlay after an upgrade.** `ghosthand overlay` now notices when the installed overlay differs from the one in the binary, keeps the old files in `<name>.previous` and installs the new ones. A symlink to a checkout is left alone. `setup` writes a `VERSION` file next to the overlay.
+
 ## [0.4.3] - 2026-11-27
 
 ### Fixed

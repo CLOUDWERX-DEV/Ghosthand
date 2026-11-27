@@ -99,18 +99,22 @@ pub fn execute(who: &str, reason: &str, countdown: u32, raw: &[String], svc: &mu
         return fail(EXIT_FAILED, "the session is locked: nothing is touched");
     }
     let scope = actions::scope(&steps);
-    let in_session = crate::sessions::current().is_some_and(|s| s.covers(&scope));
+    let session = crate::sessions::current();
+    let in_session = session.as_ref().is_some_and(|s| s.covers(&scope));
     let mut hint = String::new();
     if !in_session {
         let Some(gate) = svc.gate.as_mut() else {
             return fail(EXIT_NO_GATE, "Ghosthand: nothing is there to ask you, so nothing is touched (there is no way around the gate). Run `ghosthand overlay`, or install zenity, yad or kdialog");
         };
-        let req = Request { who: who.into(), reason: reason.into(), seconds: countdown, scope, detail: actions::detail(&steps, 140) };
+        let req = Request { who: who.into(), reason: reason.into(), seconds: countdown, scope: scope.clone(), detail: actions::detail(&steps, 140) };
         if let Err(e) = gate::wait_for_allow(gate.as_mut(), &req, svc.gate_patience) {
             return fail(e.code, e.message);
         }
         let asked = crate::sessions::note_gate_approval();
-        if asked >= crate::sessions::NUDGE_AFTER {
+        if let Some(open) = &session {
+            // a session is on, but this run needs more than it covers (typing in a mouse session): say so, don't just keep asking
+            hint = crate::sessions::too_narrow(open, &scope);
+        } else if asked >= crate::sessions::NUDGE_AFTER {
             hint = crate::sessions::nudge(asked);
         }
     }
@@ -164,6 +168,12 @@ pub struct SessionRequest {
 pub fn start_session(req: &SessionRequest, svc: &mut Services) -> Outcome {
     if (svc.locked)() {
         return fail(EXIT_FAILED, "the session is locked: nothing is touched");
+    }
+    // one that already covers this needs no second card: an agent that asks again just carries on
+    if let Some(open) = crate::sessions::current().filter(|s| s.covers(&req.scope)) {
+        crate::sessions::touch();
+        let left = open.remaining(crate::util::now());
+        return Outcome { printed: vec![serde_json::json!({"session": "already_on", "scope": open.scope, "seconds_left": left.round(), "note": "a session that covers this is already running: carry on, no need to ask again"}).to_string()], ..Default::default() };
     }
     let Some(gate) = svc.gate.as_mut() else {
         return fail(EXIT_NO_GATE, "Ghosthand: nothing is there to ask you, so nothing is touched (there is no way around the gate). Run `ghosthand overlay`, or install zenity, yad or kdialog");
@@ -348,6 +358,25 @@ mod tests {
         // inside a session there is nothing to nudge about
         assert_eq!(start_session(&session_request("mouse"), &mut t.svc).code, 0);
         assert!(run(&mut t, &["jump 3 3"]).hint.is_empty());
+    }
+
+    #[test]
+    fn asking_for_a_session_that_is_already_on_asks_nothing() {
+        let mut t = rig(&[Some("allowed")]);
+        assert_eq!(start_session(&session_request("mouse and keyboard"), &mut t.svc).code, 0);
+        t.asked.borrow_mut().clear();
+        let again = start_session(&session_request("mouse"), &mut t.svc);
+        assert_eq!(again.code, 0);
+        assert!(again.printed[0].contains("already_on"), "{:?}", again.printed);
+        assert!(t.asked.borrow().is_empty(), "no second card for something already approved");
+    }
+
+    #[test]
+    fn a_session_that_is_too_narrow_says_what_to_do() {
+        let mut t = rig(&[Some("allowed"), Some("allowed")]);
+        assert_eq!(start_session(&session_request("mouse"), &mut t.svc).code, 0);
+        let typed = run(&mut t, &["type hi"]);
+        assert!(typed.hint.contains("covers only") && typed.hint.contains("keyboard") && typed.hint.contains("--scope both"), "{}", typed.hint);
     }
 
     #[test]

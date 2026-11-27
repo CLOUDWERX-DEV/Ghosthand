@@ -13,8 +13,8 @@ PanelWindow {
 
     visible: on
     color: "transparent"
-    anchors { bottom: true }
-    margins { bottom: Math.round(36 * Theme.scale) }
+    anchors { bottom: !Gate.pillOnTop; top: Gate.pillOnTop }
+    margins { bottom: Math.round(36 * Theme.scale); top: Math.round(48 * Theme.scale) }
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.namespace: "ghosthand-session"
@@ -34,7 +34,8 @@ PanelWindow {
         radius: height / 2
         color: Theme.surface
         border.width: 1
-        border.color: Qt.alpha(Theme.accent, 0.6)
+        border.color: Qt.alpha(Gate.sessionEnding ? Theme.warn : Theme.accent, 0.6)
+        Behavior on border.color { ColorAnimation { duration: 300 } }
 
         // The clock changes width every second; reserve the widest it can be so nothing in the pill shifts.
         TextMetrics {
@@ -49,7 +50,7 @@ PanelWindow {
             anchors.verticalCenter: parent.verticalCenter
             spacing: Math.round(9 * Theme.scale)
             Rectangle {
-                implicitWidth: Math.round(8 * Theme.scale); implicitHeight: implicitWidth; radius: width / 2; color: Theme.accent
+                implicitWidth: Math.round(8 * Theme.scale); implicitHeight: implicitWidth; radius: width / 2; color: Gate.sessionEnding ? Theme.warn : Theme.accent
                 SequentialAnimation on opacity {
                     running: win.on; loops: Animation.Infinite
                     NumberAnimation { to: 0.35; duration: 800; easing.type: Easing.InOutSine }
@@ -58,12 +59,12 @@ PanelWindow {
             }
             Text {
                 font.family: Theme.font; font.pixelSize: Math.round(12 * Theme.scale); font.weight: Font.DemiBold; color: Theme.text
-                text: qsTr("Agent Control · %1 ·").arg(Gate.sessionScope())
+                text: qsTr("Agent Control · %1 · %2 ·").arg(Gate.sessionWho()).arg(Gate.sessionScope())
             }
             Text {
                 id: clock
                 Layout.preferredWidth: Math.ceil(widest.width)
-                font.family: Theme.font; font.pixelSize: Math.round(12 * Theme.scale); font.weight: Font.DemiBold; color: Theme.text
+                font.family: Theme.font; font.pixelSize: Math.round(12 * Theme.scale); font.weight: Font.DemiBold; color: Gate.sessionEnding ? Theme.warn : Theme.text
                 text: qsTr("%1 left").arg(Gate.sessionClock)
             }
             Btn {

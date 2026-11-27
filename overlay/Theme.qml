@@ -11,6 +11,7 @@ Singleton {
     readonly property color muted: "#a9b3c8"
     readonly property color textOnAccent: "#04121a"
     readonly property color danger: "#ff5c7a"
+    readonly property color warn: "#ffb347"
     readonly property color hairline: "#33425a"
     readonly property color accent: Gate.accent || "#3de0ff"
     readonly property string font: "Inter, Noto Sans, sans-serif"

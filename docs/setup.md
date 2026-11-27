@@ -7,7 +7,7 @@ cargo install --git https://github.com/CLOUDWERX-DEV/Ghosthand   # or: cargo bui
 ghosthand setup           # copies the overlay to ~/.config/quickshell/ghosthand and writes a default config
 ```
 
-`ghosthand setup` replaces a previous copy of the overlay, so run it again after you upgrade.
+`ghosthand setup` replaces a previous copy of the overlay. You don't have to remember it after an upgrade: `ghosthand overlay` (what the service runs) notices when the installed overlay differs from the one in the binary, keeps the old files in `~/.config/quickshell/ghosthand.previous` and installs the new ones. `ghosthand doctor` flags an out of date overlay too. A symlink to a checkout is never touched.
 
 ## 2. Let your user create a pointer and keyboard
 

@@ -27,6 +27,50 @@ fn overlay_dir(cfg: &Config) -> PathBuf {
     paths::config_home().join("quickshell").join(cfg.overlay())
 }
 
+/// Written next to the overlay's files: which Ghosthand put them there.
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+const MARKER: &str = "VERSION";
+
+/// Is the installed overlay the one this binary ships? None when there isn't one (a dialog-only setup, or a checkout symlinked in).
+pub fn overlay_matches(cfg: &Config) -> Option<bool> {
+    let dir = overlay_dir(cfg);
+    if !dir.is_dir() || dir.is_symlink() {
+        return None;
+    }
+    Some(OVERLAY.iter().all(|(name, text)| std::fs::read_to_string(dir.join(name)).is_ok_and(|have| have == *text)))
+}
+
+fn write_overlay(dir: &std::path::Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(dir)?;
+    for (name, text) in OVERLAY {
+        std::fs::write(dir.join(name), text)?;
+    }
+    std::fs::write(dir.join(MARKER), format!("{VERSION}\n"))
+}
+
+/// An upgraded binary brings its own overlay, and a stale copy (the old pill, the old card) is a bug that only shows up on screen. So
+/// `ghosthand overlay` checks first: if the installed files differ from this binary's, the old ones are kept in `<name>.previous` (in case
+/// you had changed a colour) and replaced. A symlink to a checkout is never touched.
+pub fn refresh_overlay(cfg: &Config) {
+    if overlay_matches(cfg) != Some(false) {
+        return;
+    }
+    let dir = overlay_dir(cfg);
+    let old = std::fs::read_to_string(dir.join(MARKER)).map(|v| v.trim().to_string()).unwrap_or_else(|_| "unknown".into());
+    let previous = dir.with_file_name(format!("{}.previous", cfg.overlay()));
+    let _ = std::fs::remove_dir_all(&previous);
+    let _ = std::fs::rename(&dir, &previous);
+    match write_overlay(&dir) {
+        Ok(()) if old == VERSION => eprintln!("ghosthand: the installed overlay differed from this version's files (edited?); they were replaced. The old files are in {}", previous.display()),
+        Ok(()) => eprintln!("ghosthand: the overlay was out of date (from {old}); now {VERSION}. The old files are in {}", previous.display()),
+        Err(e) => {
+            eprintln!("ghosthand: couldn't update the overlay ({e}); putting the old one back");
+            let _ = std::fs::remove_dir_all(&dir);
+            let _ = std::fs::rename(&previous, &dir);
+        }
+    }
+}
+
 fn session_label() -> String {
     for (key, label) in [("NIRI_SOCKET", "niri"), ("HYPRLAND_INSTANCE_SIGNATURE", "Hyprland"), ("SWAYSOCK", "sway")] {
         if std::env::var_os(key).is_some_and(|v| !v.is_empty()) {
@@ -47,6 +91,9 @@ pub fn checks(cfg: &Config) -> Vec<(String, bool, &'static str)> {
     let overlay_up = which("qs") && Overlay { name: cfg.overlay() }.call(&["status"]).is_some();
     let dlg = dialog::available();
     out.push((format!("something to ask you ({})", if overlay_up { "the overlay" } else { dlg.unwrap_or("nothing yet") }), overlay_up || dlg.is_some(), "run `ghosthand overlay` (Wayland with layer-shell, needs Quickshell) or install zenity, yad or kdialog"));
+    if let Some(fresh) = overlay_matches(cfg) {
+        out.push(("the installed overlay is the one this version ships".into(), fresh, "run `ghosthand setup`, then restart the overlay (`ghosthand overlay` does it by itself next time)"));
+    }
     out.push(("the session isn't locked".into(), !locked(&cfg.lock_check()), "unlock the session"));
     out
 }
@@ -64,6 +111,18 @@ pub fn doctor(cfg: &Config) -> i32 {
         ok &= good;
     }
     println!("{}", if ok { "everything is in place" } else { "some things are missing (see above)" });
+    let rules = crate::rules::report();
+    if !rules.is_empty() {
+        println!("agent rules (what your agents read before they call ghosthand):");
+        for (path, state) in &rules {
+            let (mark, note) = match state {
+                crate::rules::State::Current => ("ok ", String::new()),
+                crate::rules::State::Outdated => ("old", "   -> run `ghosthand rules install`".into()),
+                crate::rules::State::Missing => ("-- ", "   -> run `ghosthand rules install` (optional: puts \"ask for one session\" in front of the agent)".into()),
+            };
+            println!("  {mark} {}{note}", path.display());
+        }
+    }
     if ok { 0 } else { 1 }
 }
 
@@ -72,15 +131,9 @@ pub fn setup(cfg: &Config) -> i32 {
     let dest = overlay_dir(cfg);
     let _ = std::fs::remove_file(&dest); // a symlink from a checkout
     let _ = std::fs::remove_dir_all(&dest);
-    if let Err(e) = std::fs::create_dir_all(&dest) {
-        eprintln!("can't create {}: {e}", dest.display());
+    if let Err(e) = write_overlay(&dest) {
+        eprintln!("can't install the overlay in {}: {e}", dest.display());
         return 1;
-    }
-    for (name, text) in OVERLAY {
-        if let Err(e) = std::fs::write(dest.join(name), text) {
-            eprintln!("can't write {name}: {e}");
-            return 1;
-        }
     }
     println!("overlay installed in {}", dest.display());
     let config = paths::config_file();
@@ -94,19 +147,49 @@ pub fn setup(cfg: &Config) -> i32 {
     0
 }
 
-/// `ghosthand skill` prints the agent skill; `ghosthand skill install [DIR]` puts it in DIR/ghosthand/ (default ~/.claude/skills).
+/// Where each agent keeps its skills, with the folder that tells us the agent is installed.
+fn agent_skill_dirs() -> Vec<PathBuf> {
+    let h = paths::home();
+    [(".claude", ".claude/skills"), (".codex", ".codex/skills"), (".gemini/antigravity", ".gemini/antigravity/skills"), (".config/opencode", ".config/opencode/skills"), (".agents", ".agents/skills")]
+        .iter()
+        .filter(|(agent, _)| h.join(agent).is_dir())
+        .map(|(_, skills)| h.join(skills))
+        .collect()
+}
+
+fn install_skill(root: &std::path::Path) -> Result<PathBuf, std::io::Error> {
+    let dir = root.join("ghosthand");
+    // a skill that is a symlink (a shared source of truth) is written through, never replaced by a copy
+    std::fs::create_dir_all(&dir)?;
+    std::fs::write(dir.join("SKILL.md"), SKILL)?;
+    Ok(dir)
+}
+
+/// `ghosthand skill` prints the agent skill; `ghosthand skill install [DIR|--all]` puts it in DIR/ghosthand/ (default ~/.claude/skills; `--all`:
+/// the skills folder of every agent that is installed). Run it again after an upgrade: the skill is part of the release.
 pub fn skill(args: &[String]) -> i32 {
     match args.first().map(String::as_str) {
         None => { print!("{SKILL}"); 0 }
         Some("install") => {
-            let root = args.get(1).map(|d| expand(d)).unwrap_or_else(|| paths::home().join(".claude").join("skills"));
-            let dir = root.join("ghosthand");
-            match std::fs::create_dir_all(&dir).and_then(|_| std::fs::write(dir.join("SKILL.md"), SKILL)) {
-                Ok(()) => { println!("skill installed in {}", dir.display()); 0 }
-                Err(e) => { eprintln!("can't install the skill in {}: {e}", dir.display()); 1 }
+            let roots: Vec<PathBuf> = match args.get(1).map(String::as_str) {
+                Some("--all") => agent_skill_dirs(),
+                Some(d) => vec![expand(d)],
+                None => vec![paths::home().join(".claude").join("skills")],
+            };
+            if roots.is_empty() {
+                eprintln!("no agent folder found (~/.claude, ~/.codex, ~/.gemini/antigravity, ~/.config/opencode, ~/.agents): pass a DIR");
+                return 1;
             }
+            let mut code = 0;
+            for root in roots {
+                match install_skill(&root) {
+                    Ok(dir) => println!("skill installed in {}", dir.display()),
+                    Err(e) => { eprintln!("can't install the skill in {}: {e}", root.join("ghosthand").display()); code = 1; }
+                }
+            }
+            code
         }
-        Some(_) => { eprintln!("usage: ghosthand skill [install [DIR]]"); EXIT_USAGE }
+        Some(_) => { eprintln!("usage: ghosthand skill [install [DIR|--all]]"); EXIT_USAGE }
     }
 }
 

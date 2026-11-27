@@ -106,6 +106,15 @@ pub fn note_gate_approval() -> usize {
     times.len()
 }
 
+/// What an agent is told when a session is on but the run needed more than it covers (typing inside a mouse session).
+pub fn too_narrow(open: &Session, needed: &str) -> String {
+    format!(
+        "Ghosthand: a session is on, but it covers only {} and this run needed {needed}, so the person had to approve it with a card. Start a new session that covers everything you will do: \
+         `ghosthand session end`, then `ghosthand session start --who NAME --reason \"what you are doing\" --scope both --for 30m`.",
+        open.scope
+    )
+}
+
 /// What an agent is told when the person has had to click Allow again and again: one session instead of a card per call.
 pub fn nudge(count: usize) -> String {
     format!(

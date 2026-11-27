@@ -13,6 +13,7 @@ mod layout;
 mod mcp;
 mod paths;
 mod pointer;
+mod rules;
 mod screen;
 mod session;
 mod sessions;
@@ -37,7 +38,8 @@ usage:
   ghosthand revoke                  take the pointer back now, from anywhere (bind it to a key)
   ghosthand status                  idle | asking | active | allowed | denied | timeout | revoked
   ghosthand mcp                     serve the tools to an agent over MCP (stdio)
-  ghosthand skill [install [DIR]]   print the agent skill, or install it (default DIR: ~/.claude/skills)
+  ghosthand skill [install [DIR|--all]]   print the agent skill, or install it (default DIR: ~/.claude/skills; --all: every agent skills folder that exists)
+  ghosthand rules [install|remove|status] [FILE...]   the short rules block for an agent's global instructions file (print it, or keep it up to date in place)
   ghosthand setup                   install the overlay into ~/.config/quickshell and write a default config
   ghosthand doctor                  check what's needed: uinput, screenshots, layout, Quickshell or a dialog tool
   ghosthand --version
@@ -90,6 +92,7 @@ fn run(args: &[String]) -> i32 {
         "-h" | "--help" | "help" => { print!("{}", help()); 0 }
         "-V" | "--version" | "version" => { println!("ghosthand {VERSION}"); 0 }
         "overlay" => {
+            doctor::refresh_overlay(&cfg); // an upgraded binary brings its own overlay: never run a stale copy
             let err = std::process::Command::new("qs").args(["-c", &cfg.overlay()]).exec();
             eprintln!("can't start Quickshell (`qs`): {err}. Install it, or use a dialog tool instead (zenity, yad, kdialog).");
             1
@@ -107,6 +110,7 @@ fn run(args: &[String]) -> i32 {
         "setup" => doctor::setup(&cfg),
         "doctor" => doctor::doctor(&cfg),
         "skill" => doctor::skill(&args[1..]),
+        "rules" => rules::run(&args[1..]),
         "session" => session_cmd(&args[1..]),
         "mcp" => mcp::serve(std::io::stdin().lock(), std::io::stdout(), mcp::Backend::real()),
         "daemon" => daemon::serve(std::time::Duration::from_secs(cfg.daemon_idle_seconds())),

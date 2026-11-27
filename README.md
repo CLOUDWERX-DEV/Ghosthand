@@ -38,7 +38,7 @@ How it works under the hood is simple. Ghosthand creates a virtual absolute poin
 - **A visible tag and ring** that follow the cursor while an agent drives it (with the Quickshell overlay, see below).
 - **A panic key.** `ghosthand revoke` stops a running agent, ends any grant and closes the card. Bind it to a key.
 - **Screen coordinates that match screenshots.** You give it pixels from a `grim` screenshot and it handles the scale.
-- **An agent skill**, so an agent can learn to use it from the shell with no MCP at all. `ghosthand skill install` drops it in place.
+- **An agent skill**, so an agent can learn to use it from the shell with no MCP at all. `ghosthand skill install` drops it in place (`--all` for every agent you have). **Agent rules**: `ghosthand rules install` keeps a short block in your agents' global instructions files, so an agent is told to ask for one session instead of a card per call before it makes its first call ([docs](docs/agent-rules.md)).
 - **An MCP server** on the current spec (2026-07-28), and older clients still work. There's no tool to approve a request. That part's yours.
 - **A lock check.** It refuses to run while your session is locked, and if it can't tell, it counts as locked.
 - **Works where you are.** Screenshots and screen size are detected for niri, Hyprland, sway, X11 and the rest, see below.
@@ -140,6 +140,8 @@ There's a proper agent skill in [`skills/ghosthand`](skills/ghosthand/SKILL.md).
 ```sh
 ghosthand skill install                       # ~/.claude/skills/ghosthand (Claude Code)
 ghosthand skill install ~/.agents/skills      # or any skills folder (Codex, shared agents, ...)
+ghosthand skill install --all                 # every agent folder that exists (Claude Code, Codex, Antigravity, opencode, ~/.agents)
+ghosthand rules install                       # the short rules block, in every global agent file that exists
 ```
 
 After that the agent just runs the `ghosthand` command from its shell.

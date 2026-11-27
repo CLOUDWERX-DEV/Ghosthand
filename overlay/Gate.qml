@@ -12,7 +12,7 @@ import Quickshell.Io
 //
 // Settings come from ~/.config/ghosthand/config.json and only from there (a program asking for the pointer can't change them):
 // mode "ask" (default: must be allowed, no answer is a no) | "notify" (a countdown that goes ahead unless you deny) | "off" (no card, the tag
-// still shows); countdown (seconds, 2 to 60); grant_minutes (1 to 240); accent (a colour); ui_scale.
+// still shows); countdown (seconds, 2 to 60); grant_minutes (1 to 240); accent (a colour); ui_scale; pill_position ("bottom" or "top").
 // Programs talk to this over IPC (`qs -c ghosthand ipc call ghosthand ...`) and stream the pointer as lines in
 // $XDG_RUNTIME_DIR/ghosthand/stream: "pos X Y OUTPUT", "begin WHO", "end" (logical pixels).
 Singleton {
@@ -31,6 +31,7 @@ Singleton {
             property int grant_minutes: 10
             property string accent: "#3de0ff"
             property real ui_scale: 1.0
+            property string pill_position: "bottom"
         }
     }
     // A session (`ghosthand session start`): one approval for a stretch of work. The file is written by the program and read here, only to
@@ -64,6 +65,9 @@ Singleton {
     readonly property bool isSessionAsk: detail.indexOf("session") === 0
 
     function sessionScope(): string { return sess.scope; }
+    function sessionWho(): string { return sess.who; }
+    // the last minute: the pill turns amber so the end of a session is never a surprise
+    readonly property bool sessionEnding: sessionOn && sessionLeft < 60
     Process { id: endSession; command: ["ghosthand", "session", "end"] }
     function endTheSession(): void {
         clearSession();   // the pill goes at once; the file is removed a moment later by the program
@@ -75,6 +79,7 @@ Singleton {
     readonly property int countdownSeconds: Math.max(2, Math.min(60, cfg ? cfg.countdown : 8))
     readonly property int grantMinutes: Math.max(1, Math.min(240, cfg ? cfg.grant_minutes : 10))
     readonly property color accent: cfg && cfg.accent ? cfg.accent : "#3de0ff"
+    readonly property bool pillOnTop: cfg && cfg.pill_position === "top"
     readonly property real uiScale: cfg && cfg.ui_scale ? cfg.ui_scale : 1.0
 
     property string phase: "idle"     // idle | asking | active

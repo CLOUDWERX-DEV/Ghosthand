@@ -8,7 +8,8 @@
 | `countdown` | `8` | overlay | Seconds the card waits, 2 to 60. A program can ask for a longer wait but never a shorter one. |
 | `grant_minutes` | `10` | overlay | What "Allow for N min" grants, 1 to 240. |
 | `accent` | `"#3de0ff"` | overlay | The accent colour. |
-| `ui_scale` | `1.0` | overlay | Scales the card and tag, 0.75 to 2. |
+| `ui_scale` | `1.0` | overlay | Scales the card, the pill and the tag, 0.75 to 2. |
+| `pill_position` | `"bottom"` | overlay | Where the session pill sits: `"bottom"` or `"top"`. |
 | `gate` | `"auto"` | CLI | `auto`: the overlay if it answers, else a zenity, yad or kdialog dialog. Or force `overlay` or `dialog`. |
 | `keyboard` | `true` | CLI | `false` switches every keyboard action off (they're refused up front). |
 | `keyboard_layout` | detected | CLI | The xkb layout `type` should assume, like `us`, `de` or `fr`. Only the first of a list is used. |

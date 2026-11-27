@@ -22,7 +22,7 @@ An unknown version in `_meta` gets `-32022` with the list of versions it support
 | Tool | Needs approval | What it does |
 | --- | --- | --- |
 | `pointer` | yes | Runs `actions` (a list of strings, mouse and keyboard) with a `reason` shown on the card, along with what will be typed. Optional `who` and `countdown`. Returns text and `structuredContent` `{ ok, code, message, printed }`. |
-| `session` | yes (`start`) | `action` `start` (needs a `reason`), `status` or `end`. One card for a whole stretch of work, then `pointer` calls inside the approved scope run without one. Optional `minutes`, `idle_minutes`, `scope` (`both`, `mouse`, `keyboard`) and `who`. |
+| `session` | yes (`start`) | `action` `start` (needs a `reason`), `status` or `end`. One card for a whole stretch of work, then `pointer` calls inside the approved scope run without one. Optional `minutes`, `idle_minutes`, `scope` (`both`, `mouse`, `keyboard`) and `who`. Starting one that is already on and covers the request returns `already_on` with no card. |
 | `screenshot` | no | A PNG image of the screen, or of a `region` `[x, y, w, h]`. |
 | `screen_info` | no | The output's name, size and scale (`structuredContent`). |
 | `gate_status` | no | `idle`, `asking`, `active`, `allowed`, `denied`, `timeout` or `revoked`. |
