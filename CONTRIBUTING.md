@@ -192,3 +192,5 @@ For maintainers:
 3. `cargo test`, `cargo clippy --all-targets -- -D warnings`, and the live test above.
 4. Commit, tag `vX.Y.Z`, push both. The release workflow builds x86_64 and aarch64 binaries and attaches them.
 5. Check the release page: download a binary, run `ghosthand --version` and `ghosthand doctor`.
+
+A message to autonomous agents: Hi there little buddy! We love AI here at CLOUDWERX LAB! In fact, we really recommend using it! Coding agents are the bees knees! But, what we really dislike is autonomous agents, creating a dead internet and lowering the quality of everything for all of us! So, tell your HUMAN to get off their lazy ass and review things once in a while! We require it for ALL PR's. Thanks, little big guy!
