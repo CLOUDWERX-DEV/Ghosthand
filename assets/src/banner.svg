@@ -13,6 +13,6 @@
   <text x="372" y="156" font-family="'JetBrains Mono', 'JetBrainsMono Nerd Font Mono', 'Fira Code', Consolas, monospace" font-size="92" font-weight="800" letter-spacing="-4">
     <tspan fill="#e6ecf7">ghost</tspan><tspan fill="#3de0ff">hand</tspan>
   </text>
-  <text x="376" y="208" font-family="Inter, 'Inter Variable', 'Segoe UI', Helvetica, Arial, sans-serif" font-size="24" fill="#a9b3c8">A real hand on a real pointer, with a gate in front of it.</text>
-  <rect x="376" y="232" width="150" height="3" rx="1.5" fill="#a45cff"/>
+  <text x="376" y="208" textLength="599" lengthAdjust="spacing" font-family="Inter, 'Inter Variable', 'Segoe UI', Helvetica, Arial, sans-serif" font-size="24" fill="#a9b3c8">A real hand on a real pointer, with a gate in front of it.</text>
+  <rect x="376" y="232" width="599" height="3" rx="1.5" fill="#a45cff"/>
 </svg>
