@@ -2,6 +2,13 @@
 
 All notable changes to Ghosthand are in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- The logo generator (`examples/make_logo.rs`) is gone; the icon, banner and screenshot are plain files in `assets/`.
+
+
 ## [0.6.0] - 2026-11-27
 
 ### Added
@@ -12,7 +19,7 @@ All notable changes to Ghosthand are in this file. The format follows [Keep a Ch
 
 ### Changed
 
-- **A new logo**: the angry ghost with a cursor on its chest. It replaces the pixel ghost in the icon, the banner and the card in the screenshot, and the overlay's card now shows it too (drawn as a path, so there is still no image or icon font). The mark is `assets/src/logo.svg`, traced from the artwork in `assets/src/logo-master.png`, and `cargo run --example make_logo` builds the icon and the banner around it.
+- **A new logo**: the angry ghost with a cursor on its chest. It replaces the pixel ghost in the icon, the banner and the card in the screenshot, and the overlay's card now shows it too (drawn as a path, so there is still no image or icon font). The mark is `assets/src/logo.svg`, traced from the artwork in `assets/src/logo-master.png`.
 
 ## [0.5.0] - 2026-11-27
 
@@ -95,7 +102,6 @@ Cleanup, a fuller contributing guide and more tests.
 
 ### Changed
 
-- The logo generator is now a Rust example (`cargo run --example make_logo`).
 - The docs say plainly that Quickshell is optional everywhere, and no example refers to any particular desktop setup.
 - Release binaries are built on an older Linux so they run on more distributions.
 
@@ -142,7 +148,7 @@ Keyboard support, works beyond niri, speaks the current MCP spec, and ships an a
 - **A dialog gate** for X11, GNOME and anything without layer-shell: a zenity, yad or kdialog card with Allow, Allow for N min and Deny, silence is a no, plus a notification while the pointer is in use. `ghosthand revoke` still works with no overlay, and `mode`, `countdown` and `grant_minutes` apply the same way. The `gate` config key chooses `auto` (default), `overlay` or `dialog`.
 - **Agent skill** at `skills/ghosthand/SKILL.md` (valid frontmatter, validated in the tests) that teaches an agent the whole thing from the shell, no MCP needed. `ghosthand skill` prints it and `ghosthand skill install [DIR]` installs it.
 - `ghosthand doctor` now reports the session, the keyboard layout, the clipboard tool, the screenshot tool, the screen-size source and what will ask you.
-- A new pixel-art mascot: a ghost with a cursor on its chest (`cargo run --example make_logo` draws it).
+- A new pixel-art mascot: a ghost with a cursor on its chest.
 - Docs for multiple monitors, Hyprland and sway device mapping, and X11.
 
 ### Changed

@@ -250,7 +250,7 @@ cargo test
 cargo clippy --all-targets
 ```
 
-The unit tests use fake devices and the CLI tests run the real binary in a throwaway directory, so nothing touches your desktop and uinput isn't needed. `examples/live_test.rs` checks the real devices without anything reaching your desktop (it grabs them exclusively). The logo is drawn by `cargo run --example make_logo`. [CONTRIBUTING.md](CONTRIBUTING.md) has the rest.
+The unit tests use fake devices and the CLI tests run the real binary in a throwaway directory, so nothing touches your desktop and uinput isn't needed. `examples/live_test.rs` checks the real devices without anything reaching your desktop (it grabs them exclusively). [CONTRIBUTING.md](CONTRIBUTING.md) has the rest.
 
 ## Support
 
