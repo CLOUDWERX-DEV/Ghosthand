@@ -39,7 +39,7 @@ pub fn tools() -> Value {
         {
             "name": "pointer",
             "title": "Use the mouse and keyboard",
-            "description": format!("Move and click the person's real mouse pointer and press keys or type on their real keyboard (click a field first: keys go to the focused window). A card appears on their screen and nothing happens until they allow it; if they deny or don't answer you get an error: stop and tell them, don't retry in a loop. Coordinates are screenshot pixels. Actions: {ACTIONS_HELP}."),
+            "description": format!("Move and click the person's real mouse pointer and press keys or type on their real keyboard (click a field first: keys go to the focused window). A card appears on their screen and nothing happens until they allow it; if they deny or don't answer you get an error: stop and tell them, don't retry in a loop. ONE CARD PER TASK, NOT PER CALL: if you will make more than one call (testing, walking through a UI, anything with a few steps), call the `session` tool with action \"start\" FIRST and work inside it, so the person clicks Allow once. Never make them click Allow call after call; if the reply carries a `hint`, follow it now. Coordinates are screenshot pixels. Actions: {ACTIONS_HELP}."),
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -57,7 +57,8 @@ pub fn tools() -> Value {
                     "ok": {"type": "boolean"},
                     "code": {"type": "integer", "description": "0 done, 1 failed or locked, 2 bad usage, 3 taken back, 4 denied or no answer, 5 nothing to ask with"},
                     "message": {"type": "string"},
-                    "printed": {"type": "array", "items": {"type": "string"}, "description": "What pos, info and focus printed"}
+                    "printed": {"type": "array", "items": {"type": "string"}, "description": "What pos, info and focus printed"},
+                    "hint": {"type": "string", "description": "Advice, not an error. If it is there, follow it (usually: start a session instead of asking again)"}
                 },
                 "required": ["ok", "code", "message", "printed"]
             },
@@ -145,6 +146,15 @@ impl Backend {
     }
 }
 
+/// The structured result of a `pointer` call; `hint` is there only when there is advice to give.
+fn structured(o: &Outcome) -> Value {
+    let mut v = json!({"ok": o.code == 0, "code": o.code, "message": o.message, "printed": o.printed});
+    if !o.hint.is_empty() {
+        v["hint"] = json!(o.hint);
+    }
+    v
+}
+
 /// The result of one tool call, or Err(name) for a tool that doesn't exist (a protocol error).
 fn call_tool(name: &str, args: &Value, b: &mut Backend) -> Result<Value, String> {
     match name {
@@ -161,8 +171,8 @@ fn call_tool(name: &str, args: &Value, b: &mut Backend) -> Result<Value, String>
             };
             let who = args["who"].as_str().filter(|w| !w.is_empty()).unwrap_or("Agent");
             let o = (b.run)(who, &reason, countdown, &actions);
-            let text = o.printed.iter().map(String::as_str).chain(std::iter::once(o.message.as_str())).filter(|s| !s.is_empty()).collect::<Vec<_>>().join("\n");
-            Ok(reply(if text.is_empty() { "done" } else { &text }, o.code != 0, Some(json!({"ok": o.code == 0, "code": o.code, "message": o.message, "printed": o.printed}))))
+            let text = o.printed.iter().map(String::as_str).chain([o.message.as_str(), o.hint.as_str()]).filter(|s| !s.is_empty()).collect::<Vec<_>>().join("\n");
+            Ok(reply(if text.is_empty() { "done" } else { &text }, o.code != 0, Some(structured(&o))))
         }
         "session" => {
             let action = args["action"].as_str().unwrap_or("");
@@ -417,7 +427,7 @@ mod tests {
         let mut b = backend();
         b.run = Box::new(move |who, reason, countdown, actions| {
             s2.borrow_mut().push((who.to_string(), reason.to_string(), countdown, actions.to_vec()));
-            Outcome { code: 4, message: "Ghosthand: not allowed (denied).".into(), printed: vec![] }
+            Outcome { code: 4, message: "Ghosthand: not allowed (denied).".into(), printed: vec![], hint: String::new() }
         });
         let r = call("pointer", json!({"actions": ["move 1 2", "click"], "reason": "testing", "who": "Claude", "countdown": 5}), &mut b);
         assert_eq!(seen.borrow()[0], ("Claude".to_string(), "testing".to_string(), 5, vec!["move 1 2".to_string(), "click".to_string()]));
@@ -453,7 +463,7 @@ mod tests {
     #[test]
     fn success_returns_what_pos_printed() {
         let mut b = backend();
-        b.run = Box::new(|_, _, _, _| Outcome { code: 0, message: String::new(), printed: vec!["{\"x\": 1}".into()] });
+        b.run = Box::new(|_, _, _, _| Outcome { code: 0, message: String::new(), printed: vec!["{\"x\": 1}".into()], hint: String::new() });
         let r = call("pointer", json!({"actions": ["pos"], "reason": "x"}), &mut b);
         assert_eq!(r["isError"], false);
         assert!(r["content"][0]["text"].as_str().unwrap().contains("\"x\": 1"));

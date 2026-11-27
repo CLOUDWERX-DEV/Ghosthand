@@ -122,6 +122,9 @@ fn run(args: &[String]) -> i32 {
             if !outcome.message.is_empty() {
                 eprintln!("{}", outcome.message);
             }
+            if !outcome.hint.is_empty() {
+                eprintln!("{}", outcome.hint);
+            }
             outcome.code
         }
     }

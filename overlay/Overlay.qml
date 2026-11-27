@@ -20,14 +20,14 @@ Variants {
         Behavior on progress { NumberAnimation { duration: Gate.cardShown ? Theme.anim : Theme.anim + 120; easing.type: Easing.OutExpo } }
 
         anchors { top: true; bottom: true; left: true; right: true }
-        visible: mine && (Gate.phase !== "idle" || progress > 0.01 || Gate.sessionOn)
+        visible: mine && (Gate.phase !== "idle" || progress > 0.01)
         color: "transparent"
         exclusionMode: ExclusionMode.Ignore
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.namespace: "ghosthand"
-        // click-through, except the card while it asks and the pill's End button while a session is on
-        mask: Gate.sessionOn || asking ? activeRegion : noInput
-        Region { id: activeRegion; Region { item: asking ? card : null } Region { item: pill } }
+        // click-through, except the card while it asks. (The session pill is its own window: see SessionPill.qml.)
+        mask: asking ? activeRegion : noInput
+        Region { id: activeRegion; Region { item: card } }
         Region { id: noInput }
 
         Rectangle {
@@ -122,40 +122,6 @@ Variants {
                     Btn { visible: !Gate.isSessionAsk; text: qsTr("Allow for %1 min").arg(Gate.grantMinutes); onClicked: Gate.allow(Gate.grantMinutes) }
                     Btn { text: Gate.mode === "notify" ? qsTr("Start now") : qsTr("Allow"); primary: true; onClicked: Gate.allow(0) }
                 }
-            }
-        }
-
-        // The session pill: stays up while a session is on, with the time left and a button to end it.
-        Rectangle {
-            id: pill
-            readonly property bool shown: Gate.sessionOn
-            anchors.horizontalCenter: parent.horizontalCenter
-            y: parent.height - height - Math.round(36 * Theme.scale)
-            width: shown ? pillRow.implicitWidth + Math.round(10 * Theme.scale) : 0
-            height: shown ? Math.round(34 * Theme.scale) : 0
-            visible: shown
-            radius: height / 2
-            color: Theme.surface
-            border.width: 1; border.color: Qt.alpha(Theme.accent, 0.6)
-            RowLayout {
-                id: pillRow
-                anchors.verticalCenter: parent.verticalCenter
-                x: Math.round(12 * Theme.scale)
-                spacing: Math.round(9 * Theme.scale)
-                Rectangle {
-                    implicitWidth: Math.round(8 * Theme.scale); implicitHeight: implicitWidth; radius: width / 2; color: Theme.accent
-                    SequentialAnimation on opacity {
-                        running: pill.shown; loops: Animation.Infinite
-                        NumberAnimation { to: 0.35; duration: 800; easing.type: Easing.InOutSine }
-                        NumberAnimation { to: 1.0; duration: 800; easing.type: Easing.InOutSine }
-                    }
-                }
-                Text {
-                    font.family: Theme.font; font.pixelSize: Math.round(12 * Theme.scale); font.weight: Font.DemiBold; color: Theme.text
-                    text: qsTr("Agent Control · %1 · %2 left").arg(sessWho()).arg(Gate.sessionClock)
-                    function sessWho() { return Gate.sessionScope(); }
-                }
-                Btn { text: qsTr("End"); danger: true; implicitHeight: Math.round(24 * Theme.scale); onClicked: Gate.endTheSession() }
             }
         }
 

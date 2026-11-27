@@ -3,3 +3,5 @@ singleton Theme 1.0 Theme.qml
 Btn 1.0 Btn.qml
 PointerGlyph 1.0 PointerGlyph.qml
 Overlay 1.0 Overlay.qml
+PillWindow 1.0 PillWindow.qml
+SessionPill 1.0 SessionPill.qml

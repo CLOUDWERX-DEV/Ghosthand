@@ -88,6 +88,33 @@ pub fn end() {
     let _ = std::fs::remove_file(paths::session_file());
 }
 
+/// How far back "the person keeps clicking Allow" looks, in seconds.
+pub const NUDGE_WINDOW: f64 = 600.0;
+/// This many card approvals inside the window, with no session on, and the agent is told to ask for a session instead.
+pub const NUDGE_AFTER: usize = 2;
+
+/// A plain run was just allowed through the card. Remembers when, and returns how many were allowed inside the window (this one included).
+pub fn note_gate_approval() -> usize {
+    paths::ensure_runtime_dir();
+    let t = now();
+    let file = paths::asks_file();
+    let mut times: Vec<f64> = std::fs::read_to_string(&file).unwrap_or_default().lines().filter_map(|l| l.trim().parse().ok()).filter(|x: &f64| t - x < NUDGE_WINDOW).collect();
+    times.push(t);
+    let keep = times.len().saturating_sub(20);
+    let text: String = times[keep..].iter().map(|x| format!("{x:.3}\n")).collect();
+    let _ = std::fs::write(&file, text);
+    times.len()
+}
+
+/// What an agent is told when the person has had to click Allow again and again: one session instead of a card per call.
+pub fn nudge(count: usize) -> String {
+    format!(
+        "Ghosthand: the person has now had to approve {count} separate runs in the last {} minutes. Stop sending a card per call. Ask ONCE for a session, then keep working inside it: \
+         `ghosthand session start --who NAME --reason \"what you are doing\" --for 30m` (over MCP: the `session` tool, action \"start\"), and `ghosthand session end` when you are done.",
+        (NUDGE_WINDOW / 60.0) as u32
+    )
+}
+
 /// "30m", "1h", "1h30m", "90s", "45" (minutes) into seconds.
 pub fn parse_duration(text: &str) -> Result<f64, String> {
     let t = text.trim().to_ascii_lowercase();
@@ -174,6 +201,18 @@ mod tests {
         assert!(current().unwrap().last > before, "using it restarts the idle clock");
         end();
         assert!(current().is_none());
+    }
+
+    #[test]
+    fn repeated_card_approvals_are_counted_inside_the_window_only() {
+        crate::paths::use_temp_runtime_dir();
+        assert_eq!(note_gate_approval(), 1);
+        assert_eq!(note_gate_approval(), 2);
+        let old = format!("{:.1}\n", now() - NUDGE_WINDOW - 5.0);
+        let fresh = std::fs::read_to_string(crate::paths::asks_file()).unwrap();
+        std::fs::write(crate::paths::asks_file(), old + &fresh).unwrap();
+        assert_eq!(note_gate_approval(), 3, "an approval older than the window is forgotten");
+        assert!(nudge(3).contains("session start") && nudge(3).contains("3 separate runs"));
     }
 
     #[test]

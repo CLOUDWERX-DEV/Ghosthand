@@ -41,6 +41,9 @@ Singleton {
         watchChanges: true
         printErrors: false
         onFileChanged: reload()
+        // The file is deleted when a session ends (End button, `session end`, a revoke, time up). A FileView keeps what it last read when the
+        // file goes away, so say it out loud: no file, no session. Without this the pill stayed up after End.
+        onLoadFailed: error => root.clearSession()
         adapter: JsonAdapter {
             id: sess
             property string who: ""
@@ -62,7 +65,11 @@ Singleton {
 
     function sessionScope(): string { return sess.scope; }
     Process { id: endSession; command: ["ghosthand", "session", "end"] }
-    function endTheSession(): void { endSession.running = true; }
+    function endTheSession(): void {
+        clearSession();   // the pill goes at once; the file is removed a moment later by the program
+        endSession.running = true;
+    }
+    function clearSession(): void { sess.who = ""; sess.reason = ""; sess.scope = ""; sess.started = 0; sess.expires = 0; sess.idle = 0; sess.last = 0; }
 
     readonly property string mode: cfg && ["ask", "notify", "off"].includes(cfg.mode) ? cfg.mode : "ask"
     readonly property int countdownSeconds: Math.max(2, Math.min(60, cfg ? cfg.countdown : 8))

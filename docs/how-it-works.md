@@ -21,7 +21,7 @@ agent ──► ghosthand CLI / MCP ──► ask ──► overlay (card) ─�
 ## Files
 
 - `src/` the Rust crate: `cli`, `actions`, `session`, `gate`, `dialog`, `uinput`, `keyboard`, `keys`, `layout`, `windows`, `screen`, `geometry`, `config`, `doctor`, `mcp`.
-- `ghosthand/overlay/` the Quickshell config: `Gate.qml` (state and the countdown), `Overlay.qml` (card, tag, ring), `Theme.qml`, `Btn.qml`, `PointerGlyph.qml`, `shell.qml` (the IPC handler).
+- `ghosthand/overlay/` the Quickshell config: `Gate.qml` (state and the countdown), `Overlay.qml` (card, tag, ring), `SessionPill.qml` and `PillWindow.qml` (the session pill, kept on top), `Theme.qml`, `Btn.qml`, `PointerGlyph.qml`, `shell.qml` (the IPC handler).
 
 ## Sessions
 

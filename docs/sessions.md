@@ -20,7 +20,7 @@ ghosthand session end
 ## What you see
 
 - **One card**, once: who, why, what it covers, and for how long. Just Allow and Deny (the session is the time, so there's no "Allow for N min").
-- **A pill** at the bottom of the screen the whole time: "Agent Control · mouse and keyboard · 24:10 left" and an **End** button. The tag and ring still follow the cursor while something is moving it.
+- **A pill** at the bottom of the screen the whole time: "Agent Control · mouse and keyboard · 24:10 left" and an **End** button. It stays above every other window, panel and overlay. The tag and ring still follow the cursor while something is moving it.
 - With the dialog fallback there's no pill. You get the same card and a notification when it starts. End it with `ghosthand session end` or your revoke key.
 
 ## What it covers, and what ends it
@@ -35,6 +35,8 @@ A run inside a session skips the card **only if** the session covers everything 
 Starting one is gated like anything else: no answer is a no, and with nothing to ask with it doesn't start (exit 5). It's refused on a locked screen.
 
 ## For agents
+
+Ask for a session before the first call of any task that needs more than one. If a plain run is allowed twice inside ten minutes with no session on, the run prints a hint (`hint` in the MCP result) to start one instead of asking again.
 
 Over MCP there's a `session` tool (`start`, `status`, `end`). `start` shows the card and waits for you, and returns an error if you deny or don't answer. There's no way for an agent to approve its own session. The agent skill explains when to ask for one.
 

@@ -2,6 +2,24 @@
 
 All notable changes to Ghosthand are in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.4.2] - 2026-11-27
+
+Session pill fixes, and fewer cards.
+
+### Fixed
+
+- **The pill is always on top.** Surfaces in the overlay layer stack in the order they were mapped, so a launcher, drop-down terminal or shell panel mapped after the pill sat over it (and took its clicks). The pill is now its own small window; two copies take turns and the spare is mapped above everything every two seconds, then the old one goes. A pill the pointer is on is never swapped, so a click on End never loses its window.
+- **End now ends it.** The overlay kept the last session it had read after the file was deleted, so the pill stayed up after End, `session end`, a revoke or the time running out. A missing file now means no session, and End hides the pill at once.
+- **The End button fits the pill:** equal padding around it, rounded to match, and the clock reserves its width so nothing shifts as it counts down.
+
+### Added
+
+- **A nudge toward sessions.** When the person has had to Allow two or more separate runs inside ten minutes with no session on, the run still works and prints a hint (stderr; `hint` in the MCP result) telling the caller to start one session instead of a card per call. The MCP `pointer` description and the agent skill now say it up front: more than one call means start a session first.
+
+### Changed
+
+- The full-screen overlay window is only up for the card and the cursor tag, not for the whole session.
+
 ## [0.4.1] - 2026-11-27
 
 ### Changed

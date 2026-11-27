@@ -7,6 +7,8 @@ Rectangle {
     property bool primary: false
     property bool danger: false
     signal clicked
+    readonly property bool hovered: area.containsMouse
+    readonly property bool pressed: area.pressed
 
     implicitWidth: label.implicitWidth + Math.round(24 * Theme.scale)
     implicitHeight: Math.round(32 * Theme.scale)

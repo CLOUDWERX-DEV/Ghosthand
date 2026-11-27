@@ -7,6 +7,7 @@ import Quickshell.Io
 // Ghosthand's overlay. Run it with `qs -c ghosthand` (or `ghosthand overlay`) and leave it running.
 ShellRoot {
     Overlay {}
+    SessionPill {}
 
     // The client side: `qs -c ghosthand ipc call ghosthand <function>`.
     IpcHandler {

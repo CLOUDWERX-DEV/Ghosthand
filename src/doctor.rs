@@ -9,11 +9,13 @@ use crate::util::which;
 use crate::{geometry, keyboard, layout, screen};
 
 /// The overlay's files, built into the binary so `ghosthand setup` needs nothing else.
-const OVERLAY: [(&str, &str); 7] = [
+const OVERLAY: [(&str, &str); 9] = [
     ("Btn.qml", include_str!("../overlay/Btn.qml")),
     ("Gate.qml", include_str!("../overlay/Gate.qml")),
     ("Overlay.qml", include_str!("../overlay/Overlay.qml")),
     ("PointerGlyph.qml", include_str!("../overlay/PointerGlyph.qml")),
+    ("PillWindow.qml", include_str!("../overlay/PillWindow.qml")),
+    ("SessionPill.qml", include_str!("../overlay/SessionPill.qml")),
     ("Theme.qml", include_str!("../overlay/Theme.qml")),
     ("qmldir", include_str!("../overlay/qmldir")),
     ("shell.qml", include_str!("../overlay/shell.qml")),

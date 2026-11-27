@@ -100,7 +100,7 @@ fn setup_installs_the_overlay_and_a_default_config() {
     let d = sandbox("setup");
     let o = ghosthand(&d, &["setup"]);
     assert!(o.status.success(), "{}", text(&o.stderr));
-    for f in ["shell.qml", "Gate.qml", "Overlay.qml", "Theme.qml", "Btn.qml", "PointerGlyph.qml", "qmldir"] {
+    for f in ["shell.qml", "Gate.qml", "Overlay.qml", "Theme.qml", "Btn.qml", "PointerGlyph.qml", "PillWindow.qml", "SessionPill.qml", "qmldir"] {
         assert!(d.join("cfg/quickshell/ghosthand").join(f).exists(), "{f}");
     }
     assert!(d.join("cfg/ghosthand/config.json").exists());

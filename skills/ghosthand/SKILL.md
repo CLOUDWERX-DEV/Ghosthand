@@ -11,6 +11,21 @@ Ghosthand drives the user's **real** mouse and keyboard through virtual devices 
 
 You use it from the shell with the `ghosthand` command. No MCP server is required (there is one, `ghosthand mcp`, if your host prefers tools).
 
+## Ask once: start a session first
+
+**Every card is a click the person has to make. Never make them click Allow call after call.** Before your first input action, decide how many calls the task needs:
+
+- **One call, one short run** (open a menu and look): a plain call with a good `--reason` is fine.
+- **Anything else** (testing a panel, walking through a flow, clicking, then checking, then clicking again, a drag and a screenshot, any second or third call): start **one session first** and do all the work inside it.
+
+```sh
+ghosthand session start --who Claude --reason "Testing the new tabs panel: open it, drag a tab, check the menus" --for 20m
+# ...every call after this runs with no card, until it ends...
+ghosthand session end
+```
+
+If you have already sent two plain calls, or a reply carries a `hint:` line (stderr; MCP `hint`), that is the signal you got it wrong: start a session now, don't send a third card. Start it with a reason that covers the whole job, a fair `--for`, and `--scope mouse` if you won't type. End it when you're done. Details in **Sessions** below.
+
 ## The loop
 
 Always work in this order. Never click blind.
@@ -81,7 +96,7 @@ A typo in any action, an unknown key, or a character the keyboard layout can't t
 
 ## Sessions (for long jobs)
 
-If you will do many steps (UI testing, a walkthrough), ask for **one** approval up front instead of one per call:
+If you will do more than one call (UI testing, a walkthrough, anything with steps), ask for **one** approval up front instead of one per call. This is the default for a task, not a special case:
 
 ```sh
 ghosthand session start --who Claude --reason "UI testing the settings app" --for 30m
@@ -126,7 +141,7 @@ The user is watching. A card shows your `--who` and `--reason`, then a tag and r
 - **Always set `--who` and a specific `--reason`.** "Checking the Tabs panel after the layout change" is good. "testing" is not.
 - **Denied or no answer (exit 4): stop.** Tell the user it was declined and ask what they want. Never retry in a loop, never ask again immediately, never look for a way around the gate. Do not write to `/dev/uinput` yourself, or use `wtype`, `xdotool`, `ydotool` or anything else to move the pointer or press keys to dodge it.
 - **Taken back (exit 3):** the user pressed their revoke key. Stop at once and say so. Don't resume unless they ask.
-- **The user may Allow for N minutes, or approve a session.** Later calls then go straight through. Still keep each run short and purposeful, and end a session when you are done.
+- **Don't make them click through many cards.** Several plain calls in a row is the mistake a session exists to prevent: ask once with `session start`. The user may also Allow for N minutes; later calls then go straight through. Either way keep each run short and purposeful, and end a session when you are done.
 - **Never touch anything destructive** (delete, send, buy, close unsaved work, power) without the user having asked for exactly that.
 - **The session being locked is a refusal (exit 1).** Don't try to get past a lock screen.
 

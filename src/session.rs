@@ -22,10 +22,12 @@ pub struct Outcome {
     pub message: String,
     /// What pos, info and focus printed.
     pub printed: Vec<String>,
+    /// Advice for the agent that is not an error: "ask for a session instead of a card per call".
+    pub hint: String,
 }
 
 fn fail(code: i32, message: impl Into<String>) -> Outcome {
-    Outcome { code, message: message.into(), printed: vec![] }
+    Outcome { code, message: message.into(), printed: vec![], hint: String::new() }
 }
 
 /// The position stream the overlay follows: `begin WHO`, `pos X Y OUTPUT` (logical pixels), `end`.
@@ -98,6 +100,7 @@ pub fn execute(who: &str, reason: &str, countdown: u32, raw: &[String], svc: &mu
     }
     let scope = actions::scope(&steps);
     let in_session = crate::sessions::current().is_some_and(|s| s.covers(&scope));
+    let mut hint = String::new();
     if !in_session {
         let Some(gate) = svc.gate.as_mut() else {
             return fail(EXIT_NO_GATE, "Ghosthand: nothing is there to ask you, so nothing is touched (there is no way around the gate). Run `ghosthand overlay`, or install zenity, yad or kdialog");
@@ -105,6 +108,10 @@ pub fn execute(who: &str, reason: &str, countdown: u32, raw: &[String], svc: &mu
         let req = Request { who: who.into(), reason: reason.into(), seconds: countdown, scope, detail: actions::detail(&steps, 140) };
         if let Err(e) = gate::wait_for_allow(gate.as_mut(), &req, svc.gate_patience) {
             return fail(e.code, e.message);
+        }
+        let asked = crate::sessions::note_gate_approval();
+        if asked >= crate::sessions::NUDGE_AFTER {
+            hint = crate::sessions::nudge(asked);
         }
     }
     let stream = svc.stream.clone();
@@ -136,9 +143,9 @@ pub fn execute(who: &str, reason: &str, countdown: u32, raw: &[String], svc: &mu
         crate::sessions::touch();
     }
     match outcome {
-        Ok(()) => Outcome { printed: out, ..Default::default() },
-        Err(Stop::Revoked) => Outcome { code: EXIT_REVOKED, message: format!("Ghosthand: taken back after {done} of {} actions.", steps.len()), printed: out },
-        Err(Stop::Failed(e)) => Outcome { code: EXIT_FAILED, message: format!("action {} failed: {e}", done + 1), printed: out },
+        Ok(()) => Outcome { printed: out, hint, ..Default::default() },
+        Err(Stop::Revoked) => Outcome { code: EXIT_REVOKED, message: format!("Ghosthand: taken back after {done} of {} actions.", steps.len()), printed: out, hint: String::new() },
+        Err(Stop::Failed(e)) => Outcome { code: EXIT_FAILED, message: format!("action {} failed: {e}", done + 1), printed: out, hint },
     }
 }
 
@@ -330,6 +337,17 @@ mod tests {
 
     fn session_request(scope: &str) -> SessionRequest {
         SessionRequest { who: "Claude".into(), reason: "UI testing".into(), scope: scope.into(), seconds: 1800.0, idle: 600.0, countdown: 0 }
+    }
+
+    #[test]
+    fn the_second_card_in_a_row_tells_the_agent_to_use_a_session() {
+        let mut t = rig(&[Some("allowed"), Some("allowed"), Some("allowed")]);
+        assert!(run(&mut t, &["jump 1 1"]).hint.is_empty(), "the first card is just a card");
+        let second = run(&mut t, &["jump 2 2"]);
+        assert!(second.hint.contains("session start"), "{}", second.hint);
+        // inside a session there is nothing to nudge about
+        assert_eq!(start_session(&session_request("mouse"), &mut t.svc).code, 0);
+        assert!(run(&mut t, &["jump 3 3"]).hint.is_empty());
     }
 
     #[test]
