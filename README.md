@@ -38,6 +38,7 @@ How it works under the hood is simple. Ghosthand creates a virtual absolute poin
 - **A visible tag and ring** that follow the cursor while an agent drives it (with the Quickshell overlay, see below).
 - **A panic key.** `ghosthand revoke` stops a running agent, ends any grant and closes the card. Bind it to a key.
 - **Screen coordinates that match screenshots.** You give it pixels from a `grim` screenshot and it handles the scale.
+- **Themeable.** The card, pill, ring and tag read their colours from an optional `~/.config/ghosthand/theme.json` and follow it live ([docs](docs/configuration.md#theming-the-overlay)).
 - **An agent skill**, so an agent can learn to use it from the shell with no MCP at all. `ghosthand skill install` drops it in place (`--all` for every agent you have). **Agent rules**: `ghosthand rules install` keeps a short block in your agents' global instructions files, so an agent is told to ask for one session instead of a card per call before it makes its first call ([docs](docs/agent-rules.md)).
 - **An MCP server** on the current spec (2026-07-28), and older clients still work. There's no tool to approve a request. That part's yours.
 - **A lock check.** It refuses to run while your session is locked, and if it can't tell, it counts as locked.

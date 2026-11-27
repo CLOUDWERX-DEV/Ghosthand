@@ -2,6 +2,12 @@
 
 All notable changes to Ghosthand are in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.6.0] - 2026-11-27
+
+### Added
+
+- **A theme file for the overlay.** `~/.config/ghosthand/theme.json` (all keys optional: `surface`, `raised`, `text`, `muted`, `text_on_accent`, `danger`, `warn`, `hairline`, `accent`) sets the colours of the card, the session pill, the ring and the tag, and the overlay follows the file live. Without the file nothing changes; a missing or broken file is ignored; `accent` in `config.json` still wins. Anything that can write JSON (a desktop theme switcher, a script) can keep Ghosthand in step with the rest of the desktop. See `docs/configuration.md`.
+
 ## [0.5.1] - 2026-11-27
 
 ### Changed

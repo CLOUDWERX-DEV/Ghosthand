@@ -32,3 +32,23 @@
 ## Why the gate settings aren't an argument
 
 On purpose. If a program could pass `mode: off` when it asks, the gate would be useless. The overlay reads its own config and nobody else.
+
+## Theming the overlay
+
+The card, the session pill, the ring and the tag take their colours from `~/.config/ghosthand/theme.json`. The file is optional: without it you get the built-in dark look, and a missing or broken file changes nothing. The overlay watches the file, so a change shows up at once with no restart.
+
+```json
+{
+  "surface": "#0e121b",
+  "raised": "#252c3d",
+  "text": "#e6ecf7",
+  "muted": "#a9b3c8",
+  "text_on_accent": "#04121a",
+  "danger": "#ff5c7a",
+  "warn": "#ffb347",
+  "hairline": "#33425a",
+  "accent": "#3de0ff"
+}
+```
+
+Every key is optional and takes `#rrggbb` (or `#aarrggbb`, or a colour name). `surface` is the card and pill background (drawn a little see-through), `raised` the buttons and the typed-text box, `hairline` the card border, `warn` the last minute of a session. `"accent"` in `config.json` still wins over the theme file's accent, so a colour you picked by hand stays yours. Anything that can write a JSON file (a desktop theme switcher, a script) can keep the overlay in step with the rest of your desktop; nothing in Ghosthand depends on any of them.

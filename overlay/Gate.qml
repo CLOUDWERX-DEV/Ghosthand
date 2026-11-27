@@ -29,11 +29,43 @@ Singleton {
             property string mode: "ask"
             property int countdown: 8
             property int grant_minutes: 10
-            property string accent: "#3de0ff"
+            property string accent: ""
             property real ui_scale: 1.0
             property string pill_position: "bottom"
         }
     }
+    // Optional colours from ~/.config/ghosthand/theme.json: a desktop theme (or you) writes the file and the overlay follows it live, with no
+    // restart. Every key is optional and a missing or broken file changes nothing. See docs/configuration.md.
+    FileView {
+        id: themeFile
+        path: (Quickshell.env("XDG_CONFIG_HOME") || (Quickshell.env("HOME") + "/.config")) + "/ghosthand/theme.json"
+        watchChanges: true
+        printErrors: false
+        onFileChanged: reload()
+        onLoadFailed: error => root.clearTheme()
+        adapter: JsonAdapter {
+            id: thm
+            property string surface: ""
+            property string raised: ""
+            property string text: ""
+            property string muted: ""
+            property string text_on_accent: ""
+            property string danger: ""
+            property string warn: ""
+            property string hairline: ""
+            property string accent: ""
+        }
+    }
+    function clearTheme(): void { thm.surface = ""; thm.raised = ""; thm.text = ""; thm.muted = ""; thm.text_on_accent = ""; thm.danger = ""; thm.warn = ""; thm.hairline = ""; thm.accent = ""; }
+    // A colour from the theme file, or `fallback` when it isn't there or isn't a colour ("#rrggbb", "#aarrggbb" or a name Qt knows).
+    function themed(key: string, fallback: color): color {
+        const v = thm[key];
+        if (!v) return fallback;
+        const c = Qt.color(v);
+        return c.valid ? c : fallback;
+    }
+    readonly property bool hasSurface: thm.surface !== "" && Qt.color(thm.surface).valid
+
     // A session (`ghosthand session start`): one approval for a stretch of work. The file is written by the program and read here, only to
     // DISPLAY it (the pill with the time left). Whether runs skip the card is decided by the program that checks the same file and the clock.
     FileView {
@@ -78,7 +110,8 @@ Singleton {
     readonly property string mode: cfg && ["ask", "notify", "off"].includes(cfg.mode) ? cfg.mode : "ask"
     readonly property int countdownSeconds: Math.max(2, Math.min(60, cfg ? cfg.countdown : 8))
     readonly property int grantMinutes: Math.max(1, Math.min(240, cfg ? cfg.grant_minutes : 10))
-    readonly property color accent: cfg && cfg.accent ? cfg.accent : "#3de0ff"
+    // the accent: config.json (your explicit choice) wins, then the theme file, then the default
+    readonly property color accent: cfg && cfg.accent ? cfg.accent : themed("accent", "#3de0ff")
     readonly property bool pillOnTop: cfg && cfg.pill_position === "top"
     readonly property real uiScale: cfg && cfg.ui_scale ? cfg.ui_scale : 1.0
 
