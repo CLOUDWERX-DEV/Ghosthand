@@ -2,13 +2,34 @@
 
 All notable changes to Ghosthand are in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.3.1] - 2026-11-26
+
+Cleanup, a fuller contributing guide and more tests.
+
+### Added
+
+- **Notification actions as a last-resort way to ask** (`notify-send` with Allow, Allow for N min and Deny buttons) for desktops with no zenity, yad or kdialog and a notification daemon that shows action buttons. No answer is still a no.
+- `examples/live_test.rs`: checks the real devices end to end without anything reaching your desktop (it grabs them exclusively), the second call's speed, and that the daemon and its devices go away when idle.
+- Random-input tests for action parsing and MCP messages, so nothing an agent sends can panic.
+- A much bigger `CONTRIBUTING.md` (architecture map, recipes for adding a screenshot tool, a desktop or an action, how to test the real devices safely), plus issue and pull request templates, including a desktop report.
+
+### Fixed
+
+- `ghosthand status` and the MCP `gate_status` tool said "unreachable" when no overlay was running but a dialog tool could ask. They now say `idle`.
+
+### Changed
+
+- The logo generator is now a Rust example (`cargo run --example make_logo`).
+- The docs say plainly that Quickshell is optional everywhere, and no example refers to any particular desktop setup.
+- Release binaries are built on an older Linux so they run on more distributions.
+
 ## [0.3.0] - 2026-11-26
 
 Rewritten in Rust, and much faster.
 
 ### Changed
 
-- **The whole program is now Rust**: one binary of about 1 MB with four direct dependencies (`serde_json`, `libc`, `libloading`, `base64`). There is nothing to install but the binary: no Python, no pip. libxkbcommon is loaded at run time when it's there (and the built-in US layout is used when it isn't), so building needs no C headers. Every behavior, action, exit code and config key from 0.2.0 is kept.
+- **The whole program was rewritten from scratch in Rust**: one binary of about 1 MB with four direct dependencies (`serde_json`, `libc`, `libloading`, `base64`). There is nothing to install but the binary. libxkbcommon is loaded at run time when it's there (and the built-in US layout is used when it isn't), so building needs no C headers. Every behavior, action, exit code and config key from 0.2.0 is kept.
 - Install with `cargo install --git https://github.com/CLOUDWERX-DEV/Ghosthand`, or take a binary from the releases page. The PKGBUILD builds with cargo. The overlay and the agent skill are built into the binary, so `ghosthand setup` and `ghosthand skill install` work from a single file.
 - Version numbers come from `Cargo.toml`.
 
@@ -35,7 +56,7 @@ Keyboard support, works beyond niri, speaks the current MCP spec, and ships an a
 ### Added
 
 - **Keyboard**, through a second virtual device (`ghosthand-keyboard`): `key` (shortcuts and chords like `ctrl+shift+t`, sequences like `Tab Tab Return`), `keydown` and `keyup` (hold Shift while you click), `type` (text, with `\n` and `\t`) and `paste` (clipboard plus Ctrl+V, restoring the clipboard, for text `type` can't make).
-- **Your real layout**: `type` and single-character keys are resolved through the layout with libxkbcommon (via ctypes, so still no Python dependencies), so QWERTY, AZERTY, Dvorak, German and the rest work, including Shift and AltGr characters. The layout is detected from the config, the environment, `setxkbmap` or `localectl`, with a built-in US layout as the fallback.
+- **Your real layout**: `type` and single-character keys are resolved through the layout with libxkbcommon (loaded at run time, so nothing extra to install), so QWERTY, AZERTY, Dvorak, German and the rest work, including Shift and AltGr characters. The layout is detected from the config, the environment, `setxkbmap` or `localectl`, with a built-in US layout as the fallback.
 - **`focus`** prints the focused window (niri, Hyprland, sway, X11) so an agent knows where its keys will land. It needs no approval.
 - **A gate that knows about the keyboard**: the card says "mouse", "keyboard" or "mouse and keyboard" and shows exactly what will be typed or pressed. A standing "Allow for N min" for the mouse does not cover the keyboard, they're granted separately. This works in the overlay and in the dialog fallback.
 - Keyboard config: `keyboard` (false switches it off), `keyboard_layout`, `keyboard_variant`, `keyboard_options`, `type_delay_ms` and `paste_terminal`.
@@ -45,7 +66,7 @@ Keyboard support, works beyond niri, speaks the current MCP spec, and ships an a
 - **A dialog gate** for X11, GNOME and anything without layer-shell: a zenity, yad or kdialog card with Allow, Allow for N min and Deny, silence is a no, plus a notification while the pointer is in use. `ghosthand revoke` still works with no overlay, and `mode`, `countdown` and `grant_minutes` apply the same way. The `gate` config key chooses `auto` (default), `overlay` or `dialog`.
 - **Agent skill** at `skills/ghosthand/SKILL.md` (valid frontmatter, validated in the tests) that teaches an agent the whole thing from the shell, no MCP needed. `ghosthand skill` prints it and `ghosthand skill install [DIR]` installs it.
 - `ghosthand doctor` now reports the session, the keyboard layout, the clipboard tool, the screenshot tool, the screen-size source and what will ask you.
-- A new pixel-art mascot: a ghost with a cursor on its chest (`assets/src/make_logo.py` draws it).
+- A new pixel-art mascot: a ghost with a cursor on its chest (`cargo run --example make_logo` draws it).
 - Docs for multiple monitors, Hyprland and sway device mapping, and X11.
 
 ### Changed
@@ -55,7 +76,6 @@ Keyboard support, works beyond niri, speaks the current MCP spec, and ships an a
 - MCP tools now have titles, annotations (`readOnlyHint`, `destructiveHint` and the rest), output schemas and `structuredContent`. An unknown tool is a protocol error (`-32602`) and bad arguments are tool errors the agent can fix.
 - The logo and banner were redrawn.
 - A clearer message when nothing is there to ask you, and `ghosthand status` and `revoke` work with either gate.
-- Python 3.9 compatible (CI runs 3.9, 3.11 and 3.13).
 
 ### Notes
 
@@ -79,9 +99,10 @@ First public release.
 - **MCP server** (`ghosthand mcp`, stdio) with `pointer`, `screenshot`, `screen_info` and `gate_status`. There is no tool to allow a request or switch the gate off.
 - `ghosthand doctor` checks uinput access, grim, Quickshell, niri, the overlay and the lock state.
 - Packaging: `pyproject.toml`, a udev rule, a systemd user unit, a niri snippet and a PKGBUILD.
-- Unit tests for the gate, actions, session and MCP, run in CI on Python 3.9, 3.11 and 3.13. No Python dependencies.
+- Unit tests for the gate, actions, session and MCP, run in CI.
 - Docs: setup, configuration, how it works, MCP, other compositors, security and contributing.
 
+[0.3.1]: https://github.com/CLOUDWERX-DEV/Ghosthand/releases/tag/v0.3.1
 [0.3.0]: https://github.com/CLOUDWERX-DEV/Ghosthand/releases/tag/v0.3.0
 [0.2.0]: https://github.com/CLOUDWERX-DEV/Ghosthand/releases/tag/v0.2.0
 [0.1.0]: https://github.com/CLOUDWERX-DEV/Ghosthand/releases/tag/v0.1.0

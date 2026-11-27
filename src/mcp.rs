@@ -418,6 +418,17 @@ mod tests {
     }
 
     #[test]
+    fn odd_messages_never_panic() {
+        let mut s = Server::new(backend());
+        let odd = [json!(null), json!(1), json!("x"), json!([]), json!({}), json!({"id": 1}), json!({"id": 1, "method": 5}), json!({"id": {"a": 1}, "method": "tools/call", "params": 7}),
+            json!({"id": 1, "method": "tools/call", "params": {"name": 3}}), json!({"id": 1, "method": "tools/call", "params": {"name": "pointer", "arguments": [1]}}),
+            json!({"id": 1, "method": "initialize", "params": {"protocolVersion": 5}}), json!({"id": 2, "method": "tools/list", "params": {"_meta": 4}})];
+        for m in &odd {
+            let _ = s.handle(m);
+        }
+    }
+
+    #[test]
     fn the_loop_answers_line_by_line_and_stops_at_eof() {
         let input = format!("{}\n\nnot json\n{}\n", modern("tools/list", json!({}), LATEST), json!({"jsonrpc": "2.0", "method": "notifications/initialized"}));
         let mut out = Vec::new();

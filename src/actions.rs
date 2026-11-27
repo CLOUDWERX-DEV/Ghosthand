@@ -368,6 +368,19 @@ mod tests {
         assert_eq!(p("type  two  spaces ").unwrap().action, Action::Type(" two  spaces ".into()));
     }
 
+    /// Whatever an agent sends, parsing answers with Ok or Err and never panics.
+    #[test]
+    fn random_input_never_panics() {
+        let words = ["jump", "move", "click", "dclick", "drag", "scroll", "wait", "shot", "key", "keydown", "type", "paste", "focus", "pos", "ctrl+shift+t", "+", "++", "\\", "\\n", "-1", "1e999", "NaN", "inf", "\u{0}", "\u{e9}", "\u{1f600}", "9999999999999999999", "", " ", "\t", "a", "Return", "F99", "x y"];
+        let mut seed = 0x9e37_79b9_7f4a_7c15u64;
+        let mut next = || { seed ^= seed << 13; seed ^= seed >> 7; seed ^= seed << 17; seed };
+        for _ in 0..20_000 {
+            let n = (next() % 6) as usize;
+            let raw: Vec<&str> = (0..n).map(|_| words[(next() % words.len() as u64) as usize]).collect();
+            let _ = p(&raw.join(if next() % 2 == 0 { " " } else { "" }));
+        }
+    }
+
     struct Rig { pointer: Pointer, keyboard: Keyboard, p: Recorder, k: Recorder, info: Info }
 
     fn rig() -> Rig {

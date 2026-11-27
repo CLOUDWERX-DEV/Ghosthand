@@ -1,0 +1,37 @@
+name: Desktop report
+description: Tell me how Ghosthand does on your desktop (this is the most useful thing you can send)
+labels: [desktop-report]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Only niri has been run for real so far. Whether it worked or not, it helps. Please try, in this order: `ghosthand doctor`, `ghosthand info`, `ghosthand focus`, a screenshot (`ghosthand 'shot /tmp/x.png'`), a gated `pos`, then a click and some typing in a window you don't mind.
+  - type: input
+    id: desktop
+    attributes:
+      label: Desktop and distro
+      description: For example "KDE Plasma 6 on Wayland, Fedora 42"
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Output of `ghosthand doctor`
+      render: text
+    validations:
+      required: true
+  - type: checkboxes
+    id: worked
+    attributes:
+      label: What worked
+      options:
+        - label: Screenshots
+        - label: The screen size in `info` matches my screenshots
+        - label: The allow/deny card showed up
+        - label: A click landed where I aimed
+        - label: Typing came out right on my layout
+        - label: `focus` named the right window
+  - type: textarea
+    id: notes
+    attributes:
+      label: What didn't, or anything odd

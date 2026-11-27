@@ -10,8 +10,8 @@
   <rect width="960" height="420" rx="22" fill="url(#bg)"/>
   <rect x="0.5" y="0.5" width="959" height="419" rx="21.5" fill="none" stroke="#3de0ff" stroke-opacity="0.2"/>
   <!-- a quiet desktop behind -->
-  <text class="code" x="40" y="250">$ cargo test -p hangar</text>
-  <text class="code" x="40" y="276">   Compiling hangar v0.2.0</text>
+  <text class="code" x="40" y="250">$ cargo test --release</text>
+  <text class="code" x="40" y="276">   Compiling myapp v0.4.1</text>
   <text class="code" x="40" y="302">    Finished test profile</text>
   <text class="code" x="40" y="328">test result: ok. 41 passed</text>
   <text class="code" x="560" y="372">$ ghosthand status</text>

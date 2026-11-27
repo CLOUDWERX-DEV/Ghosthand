@@ -11,7 +11,8 @@ use crate::gate::{revoked_since, Gate, Request};
 use crate::paths;
 use crate::util::{now, read_float, which};
 
-const TOOLS: [&str; 3] = ["zenity", "yad", "kdialog"];
+/// In order of preference. notify-send is the last resort: it needs a notification daemon that shows action buttons.
+const TOOLS: [&str; 4] = ["zenity", "yad", "kdialog", "notify-send"];
 
 pub fn available() -> Option<&'static str> {
     TOOLS.into_iter().find(|t| which(t))
@@ -31,6 +32,7 @@ pub fn command(tool: &str, who: &str, reason: &str, seconds: u32, minutes: u32, 
     let v: Vec<String> = match tool {
         "zenity" => vec!["zenity".into(), "--question".into(), "--default-cancel".into(), "--title=Ghosthand".into(), format!("--text={text}"), "--ok-label=Allow".into(), "--cancel-label=Deny".into(), format!("--extra-button={grant}"), format!("--timeout={seconds}"), "--no-markup".into()],
         "yad" => vec!["yad".into(), "--title=Ghosthand".into(), "--image=input-mouse".into(), format!("--text={text}"), "--button=Deny:1".into(), format!("--button={grant}:2"), "--button=Allow:0".into(), format!("--timeout={seconds}"), "--center".into(), "--on-top".into()],
+        "notify-send" => vec!["notify-send".into(), "-a".into(), "Ghosthand".into(), "-u".into(), "critical".into(), "-t".into(), (seconds * 1000).to_string(), "-A".into(), "allow=Allow".into(), "-A".into(), format!("grant={grant}"), "-A".into(), "deny=Deny".into(), format!("{who} wants to use your {scope}"), text.replacen(&format!("{who} wants to use your {scope}.\n\n"), "", 1)],
         _ => vec!["kdialog".into(), "--title".into(), "Ghosthand".into(), "--warningyesnocancel".into(), text, "--yes-label".into(), "Allow".into(), "--no-label".into(), grant, "--cancel-label".into(), "Deny".into()],
     };
     v
@@ -44,6 +46,7 @@ pub fn answer(tool: &str, code: i32, out: &str) -> Verdict {
     match tool {
         "zenity" => match code { 0 => Verdict::Allow, 1 if out.contains("Allow for") => Verdict::Grant, 5 => Verdict::Timeout, _ => Verdict::Deny },
         "yad" => match code { 0 => Verdict::Allow, 2 => Verdict::Grant, 70 => Verdict::Timeout, _ => Verdict::Deny },
+        "notify-send" => match out.trim() { "allow" => Verdict::Allow, "grant" => Verdict::Grant, _ => Verdict::Deny }, // prints the chosen action; nothing when it was dismissed or expired
         _ => match code { 0 => Verdict::Allow, 1 => Verdict::Grant, _ => Verdict::Deny }, // kdialog
     }
 }
@@ -223,6 +226,18 @@ mod tests {
         assert_eq!(answer("yad", 252, ""), Verdict::Deny, "closing the window is a no");
         assert_eq!(answer("kdialog", 0, ""), Verdict::Allow);
         assert_eq!(answer("kdialog", 2, ""), Verdict::Deny);
+        assert_eq!(answer("notify-send", 0, "allow\n"), Verdict::Allow);
+        assert_eq!(answer("notify-send", 0, "grant\n"), Verdict::Grant);
+        assert_eq!(answer("notify-send", 0, ""), Verdict::Deny, "dismissed or expired");
+        assert_eq!(answer("notify-send", 0, "deny\n"), Verdict::Deny);
+    }
+
+    #[test]
+    fn the_notification_carries_three_actions_and_the_request() {
+        let argv = command("notify-send", "Claude", "why", 8, 10, "mouse and keyboard", "type: 'ls'");
+        let text = argv.join("|");
+        assert!(text.contains("-A|allow=Allow") && text.contains("grant=Allow for 10 min") && text.contains("deny=Deny"));
+        assert!(text.contains("Claude wants to use your mouse and keyboard") && text.contains("type: 'ls'") && text.contains("8000"));
     }
 
     #[test]

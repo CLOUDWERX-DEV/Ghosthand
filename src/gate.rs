@@ -141,9 +141,15 @@ impl Gate for Overlay {
 
 /// The overlay when it answers, else a dialog tool if one is installed. One process spawn on the usual path (no separate probe).
 pub struct Auto {
-    overlay: Overlay,
-    dialog: Option<DialogGate>,
+    overlay: Box<dyn Gate>,
+    dialog: Option<Box<dyn Gate>>,
     using_dialog: bool,
+}
+
+impl Auto {
+    pub fn new(overlay: Box<dyn Gate>, dialog: Option<Box<dyn Gate>>) -> Auto {
+        Auto { overlay, dialog, using_dialog: false }
+    }
 }
 
 impl Gate for Auto {
@@ -158,7 +164,11 @@ impl Gate for Auto {
         answer
     }
     fn status(&mut self) -> Option<String> {
-        if self.using_dialog { self.dialog.as_mut()?.status() } else { self.overlay.status() }
+        if self.using_dialog {
+            return self.dialog.as_mut()?.status();
+        }
+        // Nothing asked yet: the overlay's state if it's there, else "idle" when a dialog can ask, else None (nothing to ask with).
+        self.overlay.status().or_else(|| self.dialog.as_ref().map(|_| "idle".to_string()))
     }
     fn deny(&mut self) {
         if self.using_dialog { if let Some(d) = self.dialog.as_mut() { d.deny() } } else { self.overlay.deny() }
@@ -172,8 +182,8 @@ pub fn default_gate(cfg: &Config) -> Option<Box<dyn Gate>> {
         "dialog" => dialog::available().map(|t| Box::new(DialogGate::new(t)) as Box<dyn Gate>),
         "overlay" => Some(Box::new(overlay)),
         _ => {
-            let dialog = dialog::available().map(DialogGate::new);
-            if which("qs") || dialog.is_some() { Some(Box::new(Auto { overlay, dialog, using_dialog: false })) } else { None }
+            let dialog = dialog::available().map(|t| Box::new(DialogGate::new(t)) as Box<dyn Gate>);
+            if which("qs") || dialog.is_some() { Some(Box::new(Auto::new(Box::new(overlay), dialog))) } else { None }
         }
     }
 }
@@ -264,6 +274,24 @@ mod tests {
         let r = Request { scope: "mouse and keyboard".into(), detail: "type: 'ls'".into(), ..req() };
         wait_for_allow(&mut g, &r, None).unwrap();
         assert_eq!(g.calls[0], "ask Claude why mouse and keyboard type: 'ls'");
+    }
+
+    #[test]
+    fn auto_uses_the_overlay_when_it_answers_and_a_dialog_when_it_does_not() {
+        fast();
+        let mut g = Auto::new(Box::new(script(&[Some("allowed")])), Some(Box::new(script(&[Some("asking")]))));
+        assert_eq!(g.ask(&req()).as_deref(), Some("allowed"));
+        let mut g = Auto::new(Box::new(script(&[None])), Some(Box::new(script(&[Some("asking"), Some("active")]))));
+        assert_eq!(g.ask(&req()).as_deref(), Some("asking"), "the overlay is down: the dialog asks");
+        assert_eq!(g.status().as_deref(), Some("active"), "and the dialog answers from then on");
+    }
+
+    #[test]
+    fn auto_status_before_any_ask() {
+        // overlay up: its state. overlay down but a dialog can ask: idle. nothing at all: None.
+        assert_eq!(Auto::new(Box::new(script(&[Some("asking")])), None).status().as_deref(), Some("asking"));
+        assert_eq!(Auto::new(Box::new(script(&[None])), Some(Box::new(script(&[])))).status().as_deref(), Some("idle"));
+        assert_eq!(Auto::new(Box::new(script(&[None])), None).status(), None);
     }
 
     #[test]

@@ -23,7 +23,7 @@ Log out and back in so the group applies. If you'd rather not add yourself to `i
 
 ## 3. Start the overlay (or use a dialog)
 
-On **X11, GNOME, or anywhere without Quickshell**, skip the overlay. Install `zenity` (or `yad` or `kdialog`) and Ghosthand asks with a dialog instead. It's the same question with the same answers, and a notification tells you the pointer is in use. There's no cursor tag there. `ghosthand doctor` shows which one it will use. Force one with `"gate": "overlay"` or `"gate": "dialog"` in the config.
+On **X11, GNOME, or anywhere without Quickshell**, skip the overlay. Install `zenity` (or `yad` or `kdialog`) and Ghosthand asks with a dialog instead. With none of them, a notification daemon that shows action buttons works too (Ghosthand uses `notify-send` for that). It's the same question with the same answers, and a notification tells you the pointer is in use. There's no cursor tag there. `ghosthand doctor` shows which one it will use. Force one with `"gate": "overlay"` or `"gate": "dialog"` in the config.
 
 On Wayland with layer-shell (niri, Hyprland, sway, river, KDE) the overlay gives you the card and the tag.
 

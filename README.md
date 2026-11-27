@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="CHANGELOG.md"><img alt="version" src="https://img.shields.io/badge/version-0.3.0-3de0ff?style=flat-square"></a>
+  <a href="CHANGELOG.md"><img alt="version" src="https://img.shields.io/badge/version-0.3.1-3de0ff?style=flat-square"></a>
   <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-b26bff?style=flat-square"></a>
   <img alt="rust" src="https://img.shields.io/badge/rust-single%20binary-3de0ff?style=flat-square">
   <img alt="platform" src="https://img.shields.io/badge/Wayland-niri%20first-b26bff?style=flat-square">
@@ -45,6 +45,9 @@ How it works under the hood is simple. Ghosthand creates a virtual absolute poin
 - **Fast.** One static-ish Rust binary (about 1 MB, four direct dependencies). Devices are kept alive by a background daemon, so after the first call a run starts in milliseconds instead of waiting a second for a new virtual device. See [the numbers](#how-fast-is-it).
 
 ## Where it works
+
+> [!NOTE]
+> **Quickshell is optional.** Without it Ghosthand asks you with a plain dialog (zenity, yad or kdialog), or with a notification that has Allow and Deny buttons, and everything else works the same. You only lose the cursor tag and ring. Nothing here needs any particular desktop shell.
 
 Two parts, and they're independent: the **pointer** (uinput, works on anything) and the **asking** (the card). The card uses Quickshell on Wayland, or a dialog everywhere else.
 
@@ -194,7 +197,7 @@ There are other tools doing nearby things, and some are very good. I'm not going
 - [**Cua Drivers**](https://github.com/trycua/cua) is a big, polished project that covers sandboxes, VMs and more across platforms. If you want that scope, use it. Ghosthand is much smaller and only does the local pointer on Wayland.
 - [**computer-use-linux**](https://github.com/agent-sh/computer-use-linux), [**Deskwright**](https://github.com/tristanmuzzu/deskwright) and **hypruse** also give agents a desktop to drive. If you're on Hyprland or want accessibility trees or window control, look at those first.
 
-What Ghosthand focuses on is the human side of it: a gate you answer, a tag you can't miss, and a key that takes everything back. And it's built around niri on Arch/CachyOS, where I got tired of nothing quite fitting. It's also small: you can read the whole thing in an afternoon.
+What Ghosthand focuses on is the human side of it: a gate you answer, a tag you can't miss, and a key that takes everything back. And it's built around niri, where I got tired of nothing quite fitting. It's also small: you can read the whole thing in an afternoon.
 
 ## Limits, said plainly
 
@@ -212,9 +215,9 @@ A new virtual input device takes about a second to be picked up by the composito
 
 Revoke checks used to start a process between every action. They're a file check now.
 
-Measured on my machine (niri, one pointer and keyboard, the same three calls through both versions, in a throwaway runtime directory):
+Measured on my machine (niri, one pointer and keyboard, the same three calls through both versions, in a throwaway runtime directory). Version 0.2.0 was the first to be written in a different language and the speedup is mostly the daemon, not the language:
 
-| Call | Python version | Rust version |
+| Call | 0.2.0 (devices made on every call) | 0.3.0 (daemon) |
 | --- | --- | --- |
 | first call: jump, click, type | 2.56 s | 1.34 s (the devices are made once, together) |
 | second call, a few seconds later | 2.51 s | 0.26 s |
@@ -229,7 +232,7 @@ cargo test
 cargo clippy --all-targets
 ```
 
-The unit tests use fake devices and the CLI tests run the real binary in a throwaway directory, so nothing touches your desktop and uinput isn't needed. See [CONTRIBUTING.md](CONTRIBUTING.md). The logo is drawn by `assets/src/make_logo.py`.
+The unit tests use fake devices and the CLI tests run the real binary in a throwaway directory, so nothing touches your desktop and uinput isn't needed. `examples/live_test.rs` checks the real devices without anything reaching your desktop (it grabs them exclusively). The logo is drawn by `cargo run --example make_logo`. [CONTRIBUTING.md](CONTRIBUTING.md) has the rest.
 
 ## Support
 
