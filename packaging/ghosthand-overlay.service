@@ -1,0 +1,12 @@
+[Unit]
+Description=Ghosthand overlay (the allow/deny card and the cursor tag)
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+ExecStart=/usr/bin/env ghosthand overlay
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=graphical-session.target

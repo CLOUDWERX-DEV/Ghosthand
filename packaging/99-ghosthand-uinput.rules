@@ -1,0 +1,4 @@
+# Let members of the "input" group create virtual input devices (Ghosthand's pointer).
+# Install:  sudo cp 99-ghosthand-uinput.rules /etc/udev/rules.d/ && sudo udevadm control --reload && sudo udevadm trigger /dev/uinput
+# Then:     sudo usermod -aG input "$USER"   (log out and in once)
+KERNEL=="uinput", SUBSYSTEM=="misc", GROUP="input", MODE="0660", OPTIONS+="static_node=uinput"

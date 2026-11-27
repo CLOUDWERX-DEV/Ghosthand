@@ -1,0 +1,26 @@
+# Maintainer: CLOUDWERX LAB <mail@cloudwerxlab.com>
+pkgname=ghosthand
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='A real hand on a real pointer for coding agents on Wayland (niri first), with an allow/deny gate'
+arch=('any')
+url='https://github.com/CLOUDWERX-DEV/ghosthand'
+license=('MIT')
+depends=('python' 'grim' 'quickshell')
+optdepends=('niri: the output scale (or set GHOSTHAND_OUTPUT_SIZE and GHOSTHAND_SCALE)')
+makedepends=('python-build' 'python-installer' 'python-setuptools' 'python-wheel')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/v$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+  cd "$pkgname-$pkgver"
+  python -m build --wheel --no-isolation
+}
+
+package() {
+  cd "$pkgname-$pkgver"
+  python -m installer --destdir="$pkgdir" dist/*.whl
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 packaging/99-ghosthand-uinput.rules "$pkgdir/usr/lib/udev/rules.d/99-ghosthand-uinput.rules"
+  install -Dm644 packaging/ghosthand-overlay.service "$pkgdir/usr/lib/systemd/user/ghosthand-overlay.service"
+}

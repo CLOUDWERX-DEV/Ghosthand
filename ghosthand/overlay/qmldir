@@ -1,0 +1,5 @@
+singleton Gate 1.0 Gate.qml
+singleton Theme 1.0 Theme.qml
+Btn 1.0 Btn.qml
+PointerGlyph 1.0 PointerGlyph.qml
+Overlay 1.0 Overlay.qml
