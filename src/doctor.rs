@@ -13,7 +13,7 @@ const OVERLAY: [(&str, &str); 9] = [
     ("Btn.qml", include_str!("../overlay/Btn.qml")),
     ("Gate.qml", include_str!("../overlay/Gate.qml")),
     ("Overlay.qml", include_str!("../overlay/Overlay.qml")),
-    ("PointerGlyph.qml", include_str!("../overlay/PointerGlyph.qml")),
+    ("GhostGlyph.qml", include_str!("../overlay/GhostGlyph.qml")),
     ("PillWindow.qml", include_str!("../overlay/PillWindow.qml")),
     ("SessionPill.qml", include_str!("../overlay/SessionPill.qml")),
     ("Theme.qml", include_str!("../overlay/Theme.qml")),

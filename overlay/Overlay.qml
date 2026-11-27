@@ -69,7 +69,7 @@ Variants {
                         Layout.preferredHeight: Layout.preferredWidth
                         radius: width / 2
                         color: Qt.alpha(Theme.accent, 0.16)
-                        PointerGlyph { anchors.centerIn: parent; size: Math.round(20 * Theme.scale); color: Theme.accent }
+                        GhostGlyph { anchors.centerIn: parent; size: Math.round(26 * Theme.scale); color: Theme.accent }
                     }
                     ColumnLayout {
                         Layout.fillWidth: true

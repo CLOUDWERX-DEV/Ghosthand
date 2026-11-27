@@ -2,6 +2,12 @@
 
 All notable changes to Ghosthand are in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.5.1] - 2026-11-27
+
+### Changed
+
+- **A new logo**: the angry ghost with a cursor on its chest. It replaces the pixel ghost in the icon, the banner and the card in the screenshot, and the overlay's card now shows it too (drawn as a path, so there is still no image or icon font). The mark is `assets/src/logo.svg`, traced from the artwork in `assets/src/logo-master.png`, and `cargo run --example make_logo` builds the icon and the banner around it.
+
 ## [0.5.0] - 2026-11-27
 
 Agents get the "ask once" rule before their first call, and the little annoyances around upgrades and sessions are gone.
