@@ -19,6 +19,12 @@ A pointer can click things. A keyboard can run commands: type into a terminal an
 - `"keyboard": false` in the config switches every keyboard action off.
 - Keys go to the focused window, and the agent can't aim them. `focus` tells it where they'll land, but it can't be forced to look.
 
+## The device daemon
+
+The background daemon (`ghosthand daemon`) keeps the virtual devices alive so runs start fast. It listens on a Unix socket in your runtime directory (mode 0600) and forwards raw input events from whoever connects. The gate lives in each run, not in the daemon. Anything running as you that can open that socket can inject input without asking. That is the same reach it has with write access to `/dev/uinput`, which it needs to be useful, but if you run agents in a sandbox that shares your runtime directory and not `/dev/uinput`, the socket is a way in. Set `"daemon": false` and each run creates its own devices instead.
+
+The dialog gate also ignores an Allow that comes back less than 0.7 s after the dialog appeared (a stray key or click, not a person reading) and puts focus on Deny, so Enter can't allow by accident.
+
 ## What it does protect
 
 - The mode, countdown and grant length are read by the overlay from its own config. A program asking for the pointer can't pass a mode that skips the card.

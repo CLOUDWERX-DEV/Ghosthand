@@ -2,7 +2,7 @@
 name: ghosthand
 description: Drive the user's real mouse and keyboard on Linux (Wayland or X11) with the ghosthand CLI to click, right-click, drag, hover, scroll, type, press shortcuts and take screenshots, behind an allow/deny prompt the user answers. Use when a task needs the actual desktop UI rather than code or a browser tool: testing a native or GTK/Qt/Quickshell/Electron app, opening right-click menus, drag and drop, hover states, typing into an app, keyboard shortcuts, checking how a panel really looks, or anything only a person at the desk could do. Works through the shell, so no MCP server is needed.
 license: MIT
-compatibility: Linux with /dev/uinput access (input group or udev rule). Wayland (niri, Hyprland, sway, river, KDE, GNOME) or X11. Needs the ghosthand CLI (pip install ghosthand or from github.com/CLOUDWERX-DEV/Ghosthand).
+compatibility: Linux with /dev/uinput access (input group or udev rule). Wayland (niri, Hyprland, sway, river, KDE, GNOME) or X11. Needs the ghosthand CLI (cargo install --git https://github.com/CLOUDWERX-DEV/Ghosthand, or a release binary from github.com/CLOUDWERX-DEV/Ghosthand).
 ---
 
 # Ghosthand
@@ -100,6 +100,7 @@ Keys go to whatever window has focus, so **click the field first**, then `focus`
 - **Scrolling a list.** `scroll 3 X Y` over the list. Take a screenshot after each scroll rather than scrolling a lot at once.
 - **Small targets.** Take a region screenshot of the area first and aim at the centre of the target.
 - **Check before you type.** `click` the field, `shot` to see the caret, `type`, then `shot` again.
+- **Speed.** The first call after a pause takes about a second (a background process makes the virtual devices once). Calls after that start in milliseconds, so several short calls cost almost nothing more than one long one.
 - **Keep runs short.** A call of a handful of actions is easier for the user to supervise than a long script.
 
 ## The gate: how to behave

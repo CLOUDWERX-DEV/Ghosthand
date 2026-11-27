@@ -2,6 +2,32 @@
 
 All notable changes to Ghosthand are in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] - 2026-11-26
+
+Rewritten in Rust, and much faster.
+
+### Changed
+
+- **The whole program is now Rust**: one binary of about 1 MB with four direct dependencies (`serde_json`, `libc`, `libloading`, `base64`). There is nothing to install but the binary: no Python, no pip. libxkbcommon is loaded at run time when it's there (and the built-in US layout is used when it isn't), so building needs no C headers. Every behavior, action, exit code and config key from 0.2.0 is kept.
+- Install with `cargo install --git https://github.com/CLOUDWERX-DEV/Ghosthand`, or take a binary from the releases page. The PKGBUILD builds with cargo. The overlay and the agent skill are built into the binary, so `ghosthand setup` and `ghosthand skill install` work from a single file.
+- Version numbers come from `Cargo.toml`.
+
+### Added
+
+- **A device daemon** (`ghosthand daemon`, started on demand). A new virtual device takes about a second to be picked up by the compositor, which every call used to wait for. The first call now starts a small background process that keeps the pointer and keyboard alive and forwards events over a Unix socket (mode 0600), so later calls start in milliseconds. It exits after two minutes idle, releases any key or button a dead client was holding, and is off with `"daemon": false`. New config keys: `daemon` and `daemon_idle_seconds`.
+- The pointer and keyboard devices are made at the same time, so a first call that needs both waits for one device, not two.
+- 110 tests in Rust: unit tests with fake devices, and end-to-end CLI tests that run the real binary in a throwaway directory. CI runs tests, clippy and a release build, and tagged releases build x86_64 and aarch64 binaries.
+
+### Fixed
+
+- **A stray key can no longer allow a request in the dialog gate.** The zenity dialog now focuses Deny by default, and an Allow that comes back less than 0.7 s after the dialog appeared is treated as a no. (A dialog taking focus while you type can otherwise take an Enter meant for something else.)
+- Revoke checks between steps are a file check instead of a process start per action, and typing checks for a revoke every 24 characters.
+- `ghosthand status` and the MCP `gate_status` tool report the gate that is actually in use (overlay or dialog).
+
+### Performance
+
+Same three calls through both versions, on niri, in a throwaway runtime directory: the first call (jump, click, type) went from 2.56 s to 1.34 s, the second from 2.51 s to 0.26 s, and a bare `pos` from 1.29 s to 0.03 s.
+
 ## [0.2.0] - 2026-11-26
 
 Keyboard support, works beyond niri, speaks the current MCP spec, and ships an agent skill.
@@ -56,5 +82,6 @@ First public release.
 - Unit tests for the gate, actions, session and MCP, run in CI on Python 3.9, 3.11 and 3.13. No Python dependencies.
 - Docs: setup, configuration, how it works, MCP, other compositors, security and contributing.
 
+[0.3.0]: https://github.com/CLOUDWERX-DEV/Ghosthand/releases/tag/v0.3.0
 [0.2.0]: https://github.com/CLOUDWERX-DEV/Ghosthand/releases/tag/v0.2.0
 [0.1.0]: https://github.com/CLOUDWERX-DEV/Ghosthand/releases/tag/v0.1.0

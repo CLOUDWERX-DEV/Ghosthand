@@ -1,26 +1,42 @@
 # Maintainer: CLOUDWERX LAB <mail@cloudwerxlab.com>
 pkgname=ghosthand
-pkgver=0.2.0
+pkgver=0.3.0
 pkgrel=1
-pkgdesc='A real hand on a real pointer for coding agents on Wayland (niri first), with an allow/deny gate'
-arch=('any')
+pkgdesc='Give coding agents your real mouse and keyboard on Linux, behind an allow/deny prompt you control'
+arch=('x86_64' 'aarch64')
 url='https://github.com/CLOUDWERX-DEV/Ghosthand'
 license=('MIT')
-depends=('python' 'grim' 'quickshell')
-optdepends=('niri: the output scale (or set GHOSTHAND_OUTPUT_SIZE and GHOSTHAND_SCALE)')
-makedepends=('python-build' 'python-installer' 'python-setuptools' 'python-wheel')
+depends=('gcc-libs' 'glibc')
+optdepends=('grim: screenshots on Wayland (niri, Hyprland, sway)'
+            'quickshell: the allow/deny card and cursor tag overlay'
+            'zenity: the allow/deny dialog on X11 and GNOME'
+            'libxkbcommon: typing with your real keyboard layout'
+            'wl-clipboard: the paste action on Wayland'
+            'niri: the output scale (or set GHOSTHAND_OUTPUT_SIZE and GHOSTHAND_SCALE)')
+makedepends=('cargo')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/v$pkgver.tar.gz")
 sha256sums=('SKIP')
 
+prepare() {
+  cd "$pkgname-$pkgver"
+  cargo fetch --locked --target "$(rustc -vV | sed -n 's/host: //p')"
+}
+
 build() {
   cd "$pkgname-$pkgver"
-  python -m build --wheel --no-isolation
+  cargo build --frozen --release
+}
+
+check() {
+  cd "$pkgname-$pkgver"
+  cargo test --frozen
 }
 
 package() {
   cd "$pkgname-$pkgver"
-  python -m installer --destdir="$pkgdir" dist/*.whl
+  install -Dm755 target/release/ghosthand "$pkgdir/usr/bin/ghosthand"
   install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
   install -Dm644 packaging/99-ghosthand-uinput.rules "$pkgdir/usr/lib/udev/rules.d/99-ghosthand-uinput.rules"
   install -Dm644 packaging/ghosthand-overlay.service "$pkgdir/usr/lib/systemd/user/ghosthand-overlay.service"
+  install -Dm644 skills/ghosthand/SKILL.md "$pkgdir/usr/share/ghosthand/skills/ghosthand/SKILL.md"
 }

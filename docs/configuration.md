@@ -16,6 +16,8 @@
 | `keyboard_options` | none | CLI | xkb options, like `caps:escape`. |
 | `type_delay_ms` | `8` | CLI | Milliseconds between typed characters, 0 to 500. Raise it for apps that drop fast input. |
 | `paste_terminal` | `false` | CLI | `true` makes `paste` press Ctrl+Shift+V (terminals) instead of Ctrl+V. |
+| `daemon` | `true` | CLI | Keep the virtual devices alive in a background process between runs (fast). `false` makes every run create its own. |
+| `daemon_idle_seconds` | `120` | CLI | How long the daemon lingers with nobody connected. `0` keeps it running. |
 | `screenshot` | none | CLI | A command that writes a PNG to `{file}`, to use your own tool. |
 | `overlay` | `"ghosthand"` | CLI | The name of the Quickshell config to run and talk to. |
 | `lock_check` | loginctl `LockedHint` | CLI | A shell command that prints `no` when the session is unlocked. Anything else, including no answer or an error, counts as locked. |

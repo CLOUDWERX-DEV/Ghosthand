@@ -3,7 +3,7 @@
 ## 1. Install
 
 ```sh
-pip install --user .      # or pipx install .
+cargo install --git https://github.com/CLOUDWERX-DEV/Ghosthand   # or: cargo build --release, then copy target/release/ghosthand
 ghosthand setup           # copies the overlay to ~/.config/quickshell/ghosthand and writes a default config
 ```
 

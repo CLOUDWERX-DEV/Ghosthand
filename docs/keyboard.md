@@ -59,7 +59,7 @@ Anything still held when the run ends (or errors, or you revoke) is released.
 
 ## Layouts
 
-Ghosthand reads your layout the way a compositor does, with libxkbcommon (called through ctypes, so there's still nothing to install in Python). The layout is found from, in order: the config (`keyboard_layout`, `keyboard_variant`, `keyboard_options`), the `XKB_DEFAULT_LAYOUT` environment variables, `setxkbmap -query` (X11), `localectl status`, and finally `us`. If libxkbcommon isn't on the system a built-in US layout is used. `ghosthand doctor` shows what it picked.
+Ghosthand reads your layout the way a compositor does, with libxkbcommon (loaded at run time, so nothing needs to be installed to build or run Ghosthand). The layout is found from, in order: the config (`keyboard_layout`, `keyboard_variant`, `keyboard_options`), the `XKB_DEFAULT_LAYOUT` environment variables, `setxkbmap -query` (X11), `localectl status`, and finally `us`. If libxkbcommon isn't on the system a built-in US layout is used. `ghosthand doctor` shows what it picked.
 
 If you switch layouts on the fly (`us,de`), Ghosthand uses the first one. Set `keyboard_layout` to the one you want.
 

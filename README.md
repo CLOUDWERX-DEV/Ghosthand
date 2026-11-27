@@ -3,11 +3,11 @@
 </p>
 
 <p align="center">
-  <a href="CHANGELOG.md"><img alt="version" src="https://img.shields.io/badge/version-0.2.0-3de0ff?style=flat-square"></a>
+  <a href="CHANGELOG.md"><img alt="version" src="https://img.shields.io/badge/version-0.3.0-3de0ff?style=flat-square"></a>
   <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-b26bff?style=flat-square"></a>
-  <img alt="python" src="https://img.shields.io/badge/python-3.9%2B-3de0ff?style=flat-square">
+  <img alt="rust" src="https://img.shields.io/badge/rust-single%20binary-3de0ff?style=flat-square">
   <img alt="platform" src="https://img.shields.io/badge/Wayland-niri%20first-b26bff?style=flat-square">
-  <img alt="dependencies" src="https://img.shields.io/badge/python%20deps-none-3de0ff?style=flat-square">
+  <img alt="tests" src="https://github.com/CLOUDWERX-DEV/Ghosthand/actions/workflows/ci.yml/badge.svg">
 </p>
 
 <p align="center"><b>Digital Food for the Analog Soul</b><br>by <a href="https://cloudwerxlab.com">CLOUDWERX LAB</a></p>
@@ -27,7 +27,7 @@ The part I care about most is the gate. Before anything moves or types, a card s
 
 I got tired of agents that could write a whole UI but couldn't open a right-click menu on it. Screenshots tell you what's there. They can't tell you what happens when you hover or drag. So the agent has to be able to use the pointer, and I had to be able to trust that it only does that when I say so.
 
-How it works under the hood is simple. Ghosthand creates a virtual absolute pointer through `/dev/uinput`, so the display server sees a normal mouse. That's why it isn't tied to one compositor: no portals, no compositor plugins, no X11 libraries. The card and tag are a small Quickshell config (Wayland), or a plain zenity/yad/kdialog dialog where Quickshell can't run. Everything else is Python with no dependencies.
+How it works under the hood is simple. Ghosthand creates a virtual absolute pointer through `/dev/uinput`, so the display server sees a normal mouse. That's why it isn't tied to one compositor: no portals, no compositor plugins, no X11 libraries. The card and tag are a small Quickshell config (Wayland), or a plain zenity/yad/kdialog dialog where Quickshell can't run. Everything else is one small Rust binary.
 
 ## What you get
 
@@ -42,7 +42,7 @@ How it works under the hood is simple. Ghosthand creates a virtual absolute poin
 - **An MCP server** on the current spec (2026-07-28), and older clients still work. There's no tool to approve a request. That part's yours.
 - **A lock check.** It refuses to run while your session is locked, and if it can't tell, it counts as locked.
 - **Works where you are.** Screenshots and screen size are detected for niri, Hyprland, sway, X11 and the rest, see below.
-- **No Python dependencies.** Standard library only.
+- **Fast.** One static-ish Rust binary (about 1 MB, four direct dependencies). Devices are kept alive by a background daemon, so after the first call a run starts in milliseconds instead of waiting a second for a new virtual device. See [the numbers](#how-fast-is-it).
 
 ## Where it works
 
@@ -63,12 +63,14 @@ Two parts, and they're independent: the **pointer** (uinput, works on anything) 
 
 ## Install
 
-You need Python 3.9 or newer and a screenshot tool for your session (`grim` on Wayland, `maim`, `scrot` or ImageMagick on X11). For the card, either [Quickshell](https://quickshell.org) (Wayland with layer-shell) or one of `zenity`, `yad` or `kdialog`.
+You need a screenshot tool for your session (`grim` on Wayland, `maim`, `scrot` or ImageMagick on X11). For the card, either [Quickshell](https://quickshell.org) (Wayland with layer-shell) or one of `zenity`, `yad` or `kdialog`.
 
 ```sh
-git clone https://github.com/CLOUDWERX-DEV/Ghosthand
-cd ghosthand
-pip install --user .        # or: pipx install .
+# from source (Rust 1.74 or newer)
+cargo install --git https://github.com/CLOUDWERX-DEV/Ghosthand
+
+# or grab a binary from the releases page and put it on your PATH
+
 ghosthand setup             # puts the overlay in ~/.config/quickshell/ghosthand (skip it if you'll use a dialog)
 ```
 
@@ -204,13 +206,30 @@ What Ghosthand focuses on is the human side of it: a gate you answer, a tag you 
 - **Absolute pointer on several monitors** needs pinning to one output on some compositors (docs/setup.md).
 - **A running `pointer` call can't be cancelled by the MCP client**, since it's a blocking call. Use `ghosthand revoke`.
 
+## How fast is it?
+
+A new virtual input device takes about a second to be picked up by the compositor. The first version paid that on every single call. Now the first call starts `ghosthand daemon` in the background, which keeps the devices alive and forwards events from later calls over a Unix socket (mode 0600). It exits by itself after two minutes of nobody using it, and lets go of any key or button a dead client was holding. The gate is not in the daemon, it stays in every run.
+
+Revoke checks used to start a process between every action. They're a file check now.
+
+Measured on my machine (niri, one pointer and keyboard, the same three calls through both versions, in a throwaway runtime directory):
+
+| Call | Python version | Rust version |
+| --- | --- | --- |
+| first call: jump, click, type | 2.56 s | 1.34 s (the devices are made once, together) |
+| second call, a few seconds later | 2.51 s | 0.26 s |
+| `pos` | 1.29 s | 0.03 s |
+
+Turn the daemon off with `"daemon": false` in the config if you'd rather every run made its own devices (the old behavior). `daemon_idle_seconds` changes how long it lingers, `0` keeps it running.
+
 ## Develop
 
 ```sh
-python -m unittest discover -s tests -t . -v
+cargo test
+cargo clippy --all-targets
 ```
 
-Tests use a fake pointer, so they run anywhere, no uinput needed. See [CONTRIBUTING.md](CONTRIBUTING.md).
+The unit tests use fake devices and the CLI tests run the real binary in a throwaway directory, so nothing touches your desktop and uinput isn't needed. See [CONTRIBUTING.md](CONTRIBUTING.md). The logo is drawn by `assets/src/make_logo.py`.
 
 ## Support
 
