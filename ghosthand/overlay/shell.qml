@@ -12,7 +12,7 @@ ShellRoot {
     IpcHandler {
         target: "ghosthand"
         // "allowed" (a standing grant, or the gate is off) or "asking": then poll status.
-        function ask(who: string, reason: string, seconds: int): string { return Gate.ask(who, reason, seconds); }
+        function ask(who: string, reason: string, seconds: int, scope: string, detail: string): string { return Gate.ask(who, reason, seconds, scope, detail); }
         // idle | asking | active | allowed | denied | timeout | revoked
         function status(): string { return Gate.status(); }
         function begin(who: string): void { Gate.begin(who); }

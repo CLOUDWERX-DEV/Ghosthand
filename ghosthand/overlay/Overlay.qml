@@ -78,7 +78,7 @@ Variants {
                             elide: Text.ElideRight
                             font.family: Theme.font; font.pixelSize: Math.round(14 * Theme.scale); font.weight: Font.DemiBold
                             color: Theme.text
-                            text: win.asking ? qsTr("%1 wants to use your mouse").arg(Gate.who) : qsTr("Agent Control is on")
+                            text: win.asking ? qsTr("%1 wants to use your %2").arg(Gate.who).arg(Gate.scope) : qsTr("Agent Control is on")
                         }
                         Text {
                             Layout.fillWidth: true
@@ -89,9 +89,26 @@ Variants {
                                 ? (Gate.reason !== "" ? Gate.reason + "\n" : "")
                                   + (Gate.mode === "notify"
                                      ? qsTr("Starts in %1 s unless you deny.").arg(Math.ceil(Gate.secondsLeft))
-                                     : qsTr("Nothing moves until you allow it (%1 s).").arg(Math.ceil(Gate.secondsLeft)))
-                                : qsTr("%1 is moving your pointer. Run `ghosthand revoke` (bind it to a key) to take it back.").arg(Gate.who)
+                                     : qsTr("Nothing happens until you allow it (%1 s).").arg(Math.ceil(Gate.secondsLeft)))
+                                : qsTr("%1 is using your %2. Run `ghosthand revoke` (bind it to a key) to take it back.").arg(Gate.who).arg(Gate.scope)
                         }
+                    }
+                }
+
+                // What the keyboard is about to type or press, so you read it before you allow it.
+                Rectangle {
+                    visible: win.asking && Gate.detail !== ""
+                    Layout.fillWidth: true
+                    implicitHeight: detailText.implicitHeight + Math.round(14 * Theme.scale)
+                    radius: Math.round(8 * Theme.scale)
+                    color: Theme.raised
+                    Text {
+                        id: detailText
+                        anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter; margins: Math.round(9 * Theme.scale) }
+                        wrapMode: Text.WrapAnywhere; maximumLineCount: 3; elide: Text.ElideRight
+                        font.family: "JetBrains Mono, monospace"; font.pixelSize: Math.round(11 * Theme.scale)
+                        color: Theme.text
+                        text: Gate.detail
                     }
                 }
 

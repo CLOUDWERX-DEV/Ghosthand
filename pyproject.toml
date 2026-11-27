@@ -24,7 +24,7 @@ classifiers = [
 
 [project.urls]
 Homepage = "https://cloudwerxlab.com"
-Changelog = "https://github.com/CLOUDWERX-DEV/ghosthand/blob/main/CHANGELOG.md"
+Changelog = "https://github.com/CLOUDWERX-DEV/Ghosthand/blob/main/CHANGELOG.md"
 
 [project.scripts]
 ghosthand = "ghosthand.cli:main"
@@ -36,4 +36,4 @@ version = { attr = "ghosthand.__version__" }
 include = ["ghosthand*"]
 
 [tool.setuptools.package-data]
-ghosthand = ["overlay/*.qml", "overlay/qmldir"]
+ghosthand = ["overlay/*.qml", "overlay/qmldir", "skill/SKILL.md"]

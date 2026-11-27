@@ -43,9 +43,12 @@ Singleton {
     property string decision: ""      // "" while asking; then allowed | denied | timeout | revoked
     property string who: "Agent"
     property string reason: ""
+    property string scope: "mouse"       // what is being asked for: "mouse", "keyboard" or "mouse and keyboard"
+    property string detail: ""           // what the keyboard will do, shown on the card ("type: git status")
     property double deadline: 0
     property double countdownMs: 8000
-    property double grantedUntil: 0
+    property double grantedUntil: 0       // a standing "Allow for N min" for the mouse
+    property double grantedKeysUntil: 0   // and, separately, for the keyboard: allowing the mouse never lets anything type
     property double now: Date.now()
     property double lastSeen: 0
     property real cx: -1
@@ -55,7 +58,10 @@ Singleton {
 
     readonly property real secondsLeft: Math.max(0, (deadline - now) / 1000)
     readonly property real fraction: phase === "asking" ? Math.max(0, Math.min(1, (deadline - now) / Math.max(1, countdownMs))) : 0
-    readonly property bool granted: now < grantedUntil
+    function covered(sc: string): bool {
+        const t = Date.now();
+        return (sc.indexOf("mouse") < 0 || t < grantedUntil) && (sc.indexOf("keyboard") < 0 || t < grantedKeysUntil);
+    }
     // The tag shows while a program is driving and its last position is fresh (a program that died never leaves it behind).
     readonly property bool tagShown: phase === "active" && cx >= 0 && now - lastSeen < 3500
     readonly property bool cardShown: phase === "asking" || now < toastUntil
@@ -76,13 +82,15 @@ Singleton {
 
     function reset(): void { cx = -1; cy = -1; lastSeen = 0; }
 
-    // A program asks to take the pointer. Returns "allowed" (a standing grant, or the gate is off) or "asking" (poll `status`).
+    // A program asks to take the pointer (and perhaps the keyboard: `sc`, with `what` it will type or press). Returns "allowed" (a standing grant, or the gate is off) or "asking" (poll `status`).
     // A client can ask for a longer wait than the setting, never a shorter one.
-    function ask(name: string, why: string, seconds: int): string {
+    function ask(name: string, why: string, seconds: int, sc: string, what: string): string {
         who = name || "Agent";
         reason = why || "";
+        scope = sc || "mouse";
+        detail = what || "";
         reset();
-        if (mode === "off" || granted) {
+        if (mode === "off" || covered(scope)) {
             decision = "allowed";
             phase = "active";
             toastUntil = Date.now() + 2800;
@@ -103,7 +111,10 @@ Singleton {
         decision = "allowed";
         phase = "active";
         now = Date.now();
-        if (minutes > 0) grantedUntil = now + minutes * 60000;
+        if (minutes > 0) {
+            if (scope.indexOf("mouse") >= 0) grantedUntil = now + minutes * 60000;
+            if (scope.indexOf("keyboard") >= 0) grantedKeysUntil = now + minutes * 60000;
+        }
     }
 
     function deny(): void {
@@ -112,10 +123,11 @@ Singleton {
 
     // Take the pointer back at any time: stops a running program (it sees "revoked"), ends a grant, closes the card.
     function revoke(): void {
-        if (phase === "idle" && grantedUntil === 0) return;
+        if (phase === "idle" && grantedUntil === 0 && grantedKeysUntil === 0) return;
         decision = "revoked";
         phase = "idle";
         grantedUntil = 0;
+        grantedKeysUntil = 0;
         toastUntil = 0;
         reset();
     }

@@ -31,6 +31,31 @@ def read_last(path=None, now=time.time):
     return None
 
 
+def create_device(name, keys=(), rels=(), absolute=None, settle=1.0):
+    """A virtual input device on /dev/uinput; returns its file descriptor. `absolute`: { axis: max }. `settle`: seconds to let the compositor pick it up."""
+    fd = os.open("/dev/uinput", os.O_WRONLY | os.O_NONBLOCK)
+    absolute = absolute or {}
+    fcntl.ioctl(fd, UI_SET_EVBIT, EV_SYN)
+    for kind, codes, ioctl in ((EV_KEY, keys, UI_SET_KEYBIT), (EV_REL, rels, UI_SET_RELBIT), (EV_ABS, absolute, UI_SET_ABSBIT)):
+        if codes:
+            fcntl.ioctl(fd, UI_SET_EVBIT, kind)
+            for code in codes:
+                fcntl.ioctl(fd, ioctl, code)
+    absmax = [0] * 64
+    for axis, top in absolute.items():
+        absmax[axis] = top
+    head = struct.pack("80sHHHHi", name.encode(), 3, 0x1234, 0x5678 if "pointer" in name else 0x5679, 1, 0)
+    os.write(fd, head + struct.pack("64i", *absmax) + struct.pack("64i", *[0] * 64) * 3)
+    fcntl.ioctl(fd, UI_DEV_CREATE)
+    time.sleep(settle)
+    return fd
+
+
+def destroy_device(fd):
+    fcntl.ioctl(fd, UI_DEV_DESTROY)
+    os.close(fd)
+
+
 class Pointer:
     """Coordinates are screenshot pixels of the output. `announce(x, y)` gets logical px after every step (for the cursor tag)."""
 
@@ -44,28 +69,14 @@ class Pointer:
             self.known = True
         self.announce = announce
         self.down = set()
-        self.fd = os.open("/dev/uinput", os.O_WRONLY | os.O_NONBLOCK)
-        for ev in (EV_KEY, EV_REL, EV_ABS, EV_SYN):
-            fcntl.ioctl(self.fd, UI_SET_EVBIT, ev)
-        for key in (BTN_LEFT, BTN_RIGHT, BTN_MIDDLE):
-            fcntl.ioctl(self.fd, UI_SET_KEYBIT, key)
-        for rel in (REL_WHEEL, REL_HWHEEL, REL_WHEEL_HI_RES, REL_HWHEEL_HI_RES):
-            fcntl.ioctl(self.fd, UI_SET_RELBIT, rel)
-        for axis in (ABS_X, ABS_Y):
-            fcntl.ioctl(self.fd, UI_SET_ABSBIT, axis)
-        absmax = [0] * 64
-        absmax[ABS_X] = absmax[ABS_Y] = 32767
-        head = struct.pack("80sHHHHi", b"ghosthand-pointer", 3, 0x1234, 0x5678, 1, 0)
-        os.write(self.fd, head + struct.pack("64i", *absmax) + struct.pack("64i", *[0] * 64) * 3)
-        fcntl.ioctl(self.fd, UI_DEV_CREATE)
-        time.sleep(1.0)  # let the compositor pick the device up
+        self.fd = create_device("ghosthand-pointer", keys=(BTN_LEFT, BTN_RIGHT, BTN_MIDDLE),
+                                rels=(REL_WHEEL, REL_HWHEEL, REL_WHEEL_HI_RES, REL_HWHEEL_HI_RES), absolute={ABS_X: 32767, ABS_Y: 32767})
 
     def close(self):
         for code in list(self.down):  # never leave a button held
             self.button(code, False)
         time.sleep(0.2)
-        fcntl.ioctl(self.fd, UI_DEV_DESTROY)
-        os.close(self.fd)
+        destroy_device(self.fd)
         try:
             runtime_dir().mkdir(parents=True, exist_ok=True)
             with open(last_position_file(), "w") as f:

@@ -17,7 +17,7 @@ class Gate(unittest.TestCase):
     def test_a_standing_grant_goes_straight_in(self):
         ask, calls = fake(["allowed"])
         g.gate("Claude", "why", 5, ask=ask, sleep=lambda s: None)
-        self.assertEqual(calls, [("ask", "Claude", "why", 5)])
+        self.assertEqual(calls, [("ask", "Claude", "why", 5, "mouse", "")])
 
     def test_it_waits_for_the_answer_and_polls(self):
         ask, calls = fake(["asking", "asking", "asking", "allowed"])

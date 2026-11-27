@@ -3,12 +3,16 @@ import json
 import subprocess
 import time
 
+from . import keyboard as kb
+from .config import load
 from .geometry import numbers
+from .screen import screenshot
 from .uinput import BTN_LEFT, BTN_MIDDLE, BTN_RIGHT
 
-ACTIONS = ("jump", "move", "click", "dclick", "rclick", "mclick", "down", "up", "rdown", "rup", "drag", "rdrag",
-           "scroll", "hscroll", "wait", "shot", "pos", "info")
-NO_POINTER = ("shot", "wait", "info")  # these never touch the pointer, so they need no approval
+POINTER = ("jump", "move", "click", "dclick", "rclick", "mclick", "down", "up", "rdown", "rup", "drag", "rdrag", "scroll", "hscroll", "pos")
+KEYBOARD = ("key", "keydown", "keyup", "type", "paste")
+NO_POINTER = ("shot", "wait", "info", "focus")  # these touch nothing, so they need no approval
+ACTIONS = POINTER + KEYBOARD + NO_POINTER
 
 
 def parse_args(argv):
@@ -24,36 +28,66 @@ def parse_args(argv):
     return opts, argv[i:]
 
 
+def head(action):
+    return action.split()[0]
+
+
+def uses_keyboard(actions):
+    return any(head(a) in KEYBOARD for a in actions)
+
+
+def uses_pointer(actions):
+    return any(head(a) in POINTER for a in actions)
+
+
+def touches_input(actions):
+    """Does anything here need the gate? (Everything but screenshots, waits, info and focus.)"""
+    return any(head(a) not in NO_POINTER for a in actions)
+
+
+touches_pointer = touches_input  # the old name
+
+
+def scope(actions):
+    """What the card says is being taken: "mouse", "keyboard" or "mouse and keyboard"."""
+    return " and ".join(n for n, used in (("mouse", uses_pointer(actions)), ("keyboard", uses_keyboard(actions))) if used) or "mouse"
+
+
+def detail(actions, limit=140):
+    """What will be typed or pressed, for the card: `type: git status`, `keys: ctrl+c`. Empty when no keyboard is used."""
+    parts = []
+    for a in actions:
+        cmd, _, rest = a.partition(" ")
+        if cmd == "type" or cmd == "paste":
+            parts.append(f"{cmd}: {kb.unescape(rest)!r}")
+        elif cmd in ("key", "keydown", "keyup"):
+            parts.append(f"{cmd}: {rest}")
+    text = "  ".join(parts)
+    return text if len(text) <= limit else text[: limit - 1] + "\u2026"
+
+
 def validate(actions):
-    """A typo is found before the pointer is ever touched."""
+    """A typo (or a character the keyboard layout can't type) is found before anything is touched."""
     for a in actions:
         words = a.split()
         if not words or words[0] not in ACTIONS:
             raise ValueError(f"unknown action: {a!r}")
+        if words[0] in KEYBOARD:
+            if load().get("keyboard") is False:
+                raise ValueError("the keyboard is switched off in the config (\"keyboard\": false)")
+            rest = a.partition(" ")[2]
+            if not rest.strip():
+                raise ValueError(f"{words[0]} needs something to {'type' if words[0] in ('type', 'paste') else 'press'}")
+            if words[0] == "type":
+                lost = kb.layout.current().missing(kb.unescape(rest))
+                if lost:
+                    raise ValueError(f"can't type {''.join(lost)!r} with the {kb.layout.current().name} layout: use `paste`, or set keyboard_layout in the config")
+            elif words[0] != "paste":
+                for combo in words[1:]:
+                    kb.parse_combo(combo)
 
 
-def touches_pointer(actions):
-    return any(a.split()[0] not in NO_POINTER for a in actions)
-
-
-def screenshot(path, region=None):
-    """A picture of the screen (or of x, y, w, h) with grim. `path` "-" writes PNG bytes to stdout of the process: use screenshot_bytes."""
-    args = ["grim"]
-    if region:
-        x, y, w, h = (int(v) for v in region)
-        args += ["-g", f"{x},{y} {w}x{h}"]
-    subprocess.run(args + [path], check=True)
-
-
-def screenshot_bytes(region=None):
-    args = ["grim"]
-    if region:
-        x, y, w, h = (int(v) for v in region)
-        args += ["-g", f"{x},{y} {w}x{h}"]
-    return subprocess.run(args + ["-"], check=True, capture_output=True).stdout
-
-
-def run(pointer, action, check, info, out=print):
+def run(pointer, action, check, info, out=print, keyboard=None):
     """One action. `check()` raises Revoked when the person took the pointer back; it is called between steps."""
     p = action.split()
     if not p:
@@ -74,6 +108,24 @@ def run(pointer, action, check, info, out=print):
         return
     if cmd == "info":
         out(json.dumps(info))
+        return
+    if cmd == "focus":
+        from .windows import focused
+        out(json.dumps(focused()))
+        return
+    if cmd in KEYBOARD:
+        text = action.partition(" ")[2]
+        if cmd == "type":
+            keyboard.type(kb.unescape(text), check)
+        elif cmd == "paste":
+            kb.paste(keyboard, kb.unescape(text), terminal=load().get("paste_terminal", False))
+        elif cmd == "key":
+            for combo in words:
+                keyboard.key(combo)
+                check()
+        else:
+            for combo in words:
+                keyboard.hold(combo, down=cmd == "keydown")
         return
     if cmd == "pos":
         out(json.dumps({"x": round(pointer.x), "y": round(pointer.y), "known": pointer.known}))

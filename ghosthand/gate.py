@@ -1,8 +1,11 @@
 """The gate: ask the overlay for the pointer and wait for a person to answer.
 
-The overlay (overlay/, a Quickshell config) draws the card and the cursor tag. The client talks to it over Quickshell IPC
-(`qs -c ghosthand ipc call ghosthand ...`) and streams the pointer position as lines in a file the overlay follows."""
-import os
+Two ways to ask, both answering the same few calls (ask, status, deny, end, revoke):
+  the overlay    (overlay/, a Quickshell config) draws the card and the cursor tag; the client talks to it over Quickshell IPC
+                 (`qs -c ghosthand ipc call ghosthand ...`) and streams the pointer position as lines in a file it follows.
+  a dialog       (dialog.py) from zenity, yad or kdialog, for X11, GNOME and anything else without layer-shell. No tag.
+`default_ask()` picks one: the config's "gate" ("auto", "overlay" or "dialog")."""
+import shutil
 import subprocess
 import time
 
@@ -33,6 +36,21 @@ def qs(*args, timeout=5):
     return r.stdout.strip() if r.returncode == 0 else None
 
 
+_chosen = {}
+
+
+def default_ask():
+    """The gate to use: "overlay" or "dialog" from the config, or (auto) the overlay when it answers, else a dialog tool if one is installed."""
+    from . import dialog
+    pref = load().get("gate", "auto")
+    if "ask" not in _chosen:
+        if pref == "dialog" or (pref == "auto" and shutil.which("qs") is not None and qs("status") is None and dialog.available()):
+            _chosen["ask"] = dialog.DialogGate()
+        else:
+            _chosen["ask"] = qs
+    return _chosen["ask"]
+
+
 def locked(command=None):
     """Is the session locked? Runs `lock_check` from the config, which prints "yes" while it is. Unknown counts as locked: refuse, don't guess."""
     command = command or load()["lock_check"]
@@ -43,11 +61,12 @@ def locked(command=None):
     return out not in ("no", "false", "0")
 
 
-def gate(who, reason, countdown, ask=qs, sleep=time.sleep, now=time.time, patience=None):
+def gate(who, reason, countdown, ask=None, sleep=time.sleep, now=time.time, patience=None, scope="mouse", detail=""):
     """Ask for the pointer and wait for the answer. Returns when allowed; raises GateError otherwise."""
-    first = ask("ask", who, reason, countdown or 0)
+    ask = ask or default_ask()
+    first = ask("ask", who, reason, countdown or 0, scope, detail)
     if first is None:
-        raise GateError("Ghosthand: the overlay isn't answering, so the pointer isn't touched (there is no way around the gate). Is `ghosthand overlay` running?", EXIT_NO_GATE)
+        raise GateError("Ghosthand: nothing is there to ask you, so the pointer isn't touched (there is no way around the gate). Run `ghosthand overlay`, or install zenity, yad or kdialog", EXIT_NO_GATE)
     if first == "allowed":
         return
     limit = now() + (patience if patience is not None else max(20, (countdown or 8) + 15))
@@ -71,7 +90,7 @@ def stream_writer():
     return f.write, f.close
 
 
-def check_not_revoked(ask=qs):
+def check_not_revoked(ask=None):
     """Raises Revoked when the person took the pointer back ("idle" means the overlay restarted or the card was closed)."""
-    if ask("status") in ("revoked", "denied", "idle", "timeout"):
+    if (ask or default_ask())("status") in ("revoked", "denied", "idle", "timeout"):
         raise Revoked()

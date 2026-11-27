@@ -10,14 +10,15 @@ from .config import load
 from .geometry import output_info
 from .session import execute
 
-HELP = f"""ghosthand {__version__}: a real hand on a real pointer for coding agents, with a gate in front of it.
+HELP = f"""ghosthand {__version__}: a real hand on a real pointer and keyboard for coding agents, with a gate in front of them.
 
 usage:
   ghosthand [--who NAME] [--reason TEXT] [--countdown N] ACTION...    drive the pointer (each action is one quoted argument)
-  ghosthand overlay                 run the overlay: the allow/deny card and the cursor tag (a Quickshell config)
+  ghosthand overlay                 run the overlay: the allow/deny card and the cursor tag (Quickshell; X11/GNOME use a dialog instead)
   ghosthand revoke                  take the pointer back now, from anywhere (bind it to a key)
   ghosthand status                  idle | asking | active | allowed | denied | timeout | revoked
   ghosthand mcp                     serve the tools to an agent over MCP (stdio)
+  ghosthand skill [install [DIR]]   print the agent skill, or install it (default DIR: ~/.claude/skills)
   ghosthand setup                   install the overlay into ~/.config/quickshell and write a default config
   ghosthand doctor                  check what's needed: uinput, grim, Quickshell, niri, the overlay
   ghosthand --version
@@ -38,6 +39,11 @@ actions (coordinates are SCREENSHOT PIXELS of the output, the ones `grim` writes
   shot FILE [X Y W H]  screenshot of the output, or of that region
   pos                  print where the pointer is (screenshot pixels)
   info                 print the output's name, size and scale as JSON
+  focus                print the focused window as JSON (where keys will land)
+  key COMBO...         press keys and chords in order: key ctrl+s   key Escape   key ctrl+shift+t   key Tab Tab Return
+  keydown COMBO        hold keys (release with keyup): keydown shift, click, keyup shift
+  type TEXT            type text with your real layout (\\n is Enter, \\t is Tab): type git status\\n
+  paste TEXT           clipboard + Ctrl+V, for text `type` can't make (emoji); the clipboard is put back
 
 example:
   ghosthand --who Claude --reason "Checking the bar menu" 'jump 800 26' 'wait 0.4' 'rclick' 'wait 0.8' 'shot /tmp/menu.png'
@@ -63,11 +69,13 @@ def main(argv=None):
     if head == "overlay":
         return run_overlay()
     if head == "revoke":
-        out = g.qs("revoke")
-        print("pointer taken back" if out is not None else "the overlay isn't answering", file=sys.stderr if out is None else sys.stdout)
-        return 0 if out is not None else g.EXIT_NO_GATE
+        from . import dialog
+        dialog.revoke()  # works with no overlay at all: a running agent notices on its next step
+        g.qs("revoke")  # and the overlay, if there is one, closes its card and ends its grant
+        print("pointer taken back")
+        return 0
     if head == "status":
-        out = g.qs("status")
+        out = g.default_ask()("status")
         print(out if out is not None else "unreachable")
         return 0 if out is not None else g.EXIT_NO_GATE
     if head == "setup":
@@ -76,6 +84,9 @@ def main(argv=None):
     if head == "doctor":
         from .doctor import doctor
         return doctor()
+    if head == "skill":
+        from .doctor import skill
+        return skill(argv[1:])
     if head == "mcp":
         from .mcp import serve
         return serve()

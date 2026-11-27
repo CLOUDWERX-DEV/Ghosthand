@@ -1,10 +1,10 @@
 # Maintainer: CLOUDWERX LAB <mail@cloudwerxlab.com>
 pkgname=ghosthand
-pkgver=0.1.0
+pkgver=0.2.0
 pkgrel=1
 pkgdesc='A real hand on a real pointer for coding agents on Wayland (niri first), with an allow/deny gate'
 arch=('any')
-url='https://github.com/CLOUDWERX-DEV/ghosthand'
+url='https://github.com/CLOUDWERX-DEV/Ghosthand'
 license=('MIT')
 depends=('python' 'grim' 'quickshell')
 optdepends=('niri: the output scale (or set GHOSTHAND_OUTPUT_SIZE and GHOSTHAND_SCALE)')
