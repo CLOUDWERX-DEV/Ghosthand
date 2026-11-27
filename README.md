@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/banner.png?v=3" alt="Ghosthand" width="720">
+  <img src="assets/banner.png?v=4" alt="Ghosthand" width="720">
 </p>
 
 <p align="center">
@@ -19,7 +19,7 @@ Ghosthand lets a coding agent use your real mouse and keyboard on Linux. Right c
 The part I care about most is the gate. Before anything moves or types, a card shows up on your screen saying who's asking, why, and exactly what it's about to type. Nothing happens until you click Allow. No answer counts as a no. While the agent is driving, a little "Agent Control" tag and a ring follow the cursor so you always know it's not you. One key takes the pointer back at any time.
 
 <p align="center">
-  <img src="assets/gate.png?v=3" alt="The allow/deny card, and the tag that follows the cursor" width="720"><br>
+  <img src="assets/gate.png?v=4" alt="The allow/deny card, and the tag that follows the cursor" width="720"><br>
   <sub>An illustration of the card and the tag, not a screenshot of a real desktop.</sub>
 </p>
 
