@@ -25,6 +25,10 @@ The background daemon (`ghosthand daemon`) keeps the virtual devices alive so ru
 
 The dialog gate also ignores an Allow that comes back less than 0.7 s after the dialog appeared (a stray key or click, not a person reading) and puts focus on Deny, so Enter can't allow by accident.
 
+## Sessions
+
+A session (`ghosthand session start`) is a state file in your runtime directory, and a run that fits it skips the card. So anything running as you that can write that file can start a session without asking, which is the same reach it has with write access to `/dev/uinput`. A session is only as strong as that directory (mode 0700). It always ends with time, an idle stop, a revoke or a locked screen, covers only the scope you approved, and the pill shows it the whole time. If you run agents in a sandbox that shares your runtime directory, set `"daemon": false` and don't share it.
+
 ## What it does protect
 
 - The mode, countdown and grant length are read by the overlay from its own config. A program asking for the pointer can't pass a mode that skips the card.

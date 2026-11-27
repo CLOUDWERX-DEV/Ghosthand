@@ -87,3 +87,36 @@ pub fn run_actions(who: &str, reason: &str, countdown: u32, actions: &[String]) 
 pub fn run_actions_dyn(who: &str, reason: &str, countdown: u32, actions: &[String]) -> Outcome {
     run_actions(who, reason, countdown, actions)
 }
+
+/// `ghosthand session start` on the real desktop.
+pub fn start_session(req: &crate::session::SessionRequest) -> Outcome {
+    let cfg = Config::load();
+    crate::session::start_session(req, &mut services(&cfg))
+}
+
+/// The MCP `session` tool: start (asks the person), status or end.
+pub fn session_tool(args: &serde_json::Value) -> Outcome {
+    let text = |k: &str| args[k].as_str().unwrap_or("").to_string();
+    match args["action"].as_str() {
+        Some("end") => {
+            crate::sessions::end();
+            Outcome { printed: vec![serde_json::json!({"session": "ended"}).to_string()], ..Default::default() }
+        }
+        Some("status") => Outcome {
+            printed: vec![match crate::sessions::current() {
+                Some(s) => serde_json::json!({"active": true, "scope": s.scope, "seconds_left": s.remaining(crate::util::now()).round()}).to_string(),
+                None => serde_json::json!({"active": false}).to_string(),
+            }],
+            ..Default::default()
+        },
+        _ => {
+            let minutes = args["minutes"].as_u64().unwrap_or(30).clamp(1, 480) as f64;
+            let idle = args["idle_minutes"].as_u64().unwrap_or(10).clamp(1, 480) as f64;
+            let scope = match args["scope"].as_str() { Some("mouse") => "mouse", Some("keyboard") => "keyboard", _ => "mouse and keyboard" };
+            start_session(&crate::session::SessionRequest {
+                who: if text("who").is_empty() { "Agent".into() } else { text("who") },
+                reason: text("reason"), scope: scope.into(), seconds: minutes * 60.0, idle: idle * 60.0, countdown: 0,
+            })
+        }
+    }
+}

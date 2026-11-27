@@ -23,6 +23,10 @@ agent ──► ghosthand CLI / MCP ──► ask ──► overlay (card) ─�
 - `src/` the Rust crate: `cli`, `actions`, `session`, `gate`, `dialog`, `uinput`, `keyboard`, `keys`, `layout`, `windows`, `screen`, `geometry`, `config`, `doctor`, `mcp`.
 - `ghosthand/overlay/` the Quickshell config: `Gate.qml` (state and the countdown), `Overlay.qml` (card, tag, ring), `Theme.qml`, `Btn.qml`, `PointerGlyph.qml`, `shell.qml` (the IPC handler).
 
+## Sessions
+
+`session start` asks through the gate like any other request, with a card that says it is a session, and on Allow writes `session.json`. Before every gated run, `execute` reads it: if it's active (not expired, not idle too long) and covers the scope, the card is skipped. A revoke deletes it, a locked screen ends it, each run that uses it restarts the idle clock. The overlay watches the file to show the pill. See [sessions.md](sessions.md).
+
 ## The device daemon
 
 A new uinput device takes about a second to be noticed by the compositor. So the first run starts `ghosthand daemon` (a new session, no terminal), which creates the pointer and keyboard once and keeps them. Later runs connect to `$XDG_RUNTIME_DIR/ghosthand/devices.sock` (mode 0600, in a 0700 directory) and send raw events as text lines: `open p`, `e p <type> <code> <value>...`, `bye`. If a client disappears holding a key or a button, the daemon releases it. After `daemon_idle_seconds` (120) with nobody connected it exits and its devices go with it.

@@ -27,6 +27,7 @@ pub fn ensure_runtime_dir() -> PathBuf {
 pub fn stream_file() -> PathBuf { runtime_dir().join("stream") }
 pub fn last_position_file() -> PathBuf { runtime_dir().join("last.json") }
 pub fn revoked_file() -> PathBuf { runtime_dir().join("revoked") }
+pub fn session_file() -> PathBuf { runtime_dir().join("session.json") }
 pub fn socket_file() -> PathBuf { runtime_dir().join("devices.sock") }
 
 /// When a standing "Allow for N min" ends. The keyboard has its own, so allowing the mouse never lets anything type.

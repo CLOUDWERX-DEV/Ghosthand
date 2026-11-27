@@ -64,6 +64,30 @@ pub fn tools() -> Value {
             "annotations": hints("Use the mouse and keyboard", false)
         },
         {
+            "name": "session",
+            "title": "Start, check or end a session",
+            "description": "Ask the person ONCE for a stretch of work (UI testing, say) instead of once per call. action \"start\" shows a card with your reason, the scope and the duration; if they allow it, later `pointer` calls inside the scope run without a card until it ends (time up, no use for the idle time, they end it, they revoke, or the screen locks). A session covers only the scope they agreed to. If they deny or don't answer, stop and tell them. \"status\" says whether one is on; \"end\" ends it. Only the person can say yes.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "action": {"type": "string", "enum": ["start", "status", "end"]},
+                    "reason": {"type": "string", "description": "start only: why you need it, shown on the card"},
+                    "who": {"type": "string", "description": "start only: who is asking (default: Agent)"},
+                    "minutes": {"type": "integer", "minimum": 1, "maximum": 480, "description": "start only: how long (default 30)"},
+                    "idle_minutes": {"type": "integer", "minimum": 1, "maximum": 480, "description": "start only: end after this long with no use (default 10)"},
+                    "scope": {"type": "string", "enum": ["both", "mouse", "keyboard"], "description": "start only: what it covers (default both)"}
+                },
+                "required": ["action"],
+                "additionalProperties": false
+            },
+            "outputSchema": {
+                "type": "object",
+                "properties": {"ok": {"type": "boolean"}, "code": {"type": "integer"}, "message": {"type": "string"}, "printed": {"type": "array", "items": {"type": "string"}}},
+                "required": ["ok", "code", "message", "printed"]
+            },
+            "annotations": hints("Start, check or end a session", false)
+        },
+        {
             "name": "screenshot",
             "title": "Take a screenshot",
             "description": "A PNG of the screen, or of the region [x, y, width, height] in screenshot pixels. Needs no approval.",
@@ -103,6 +127,7 @@ type ShotFn = Box<dyn Fn(Option<[i64; 4]>) -> Result<Vec<u8>, String>>;
 /// What the server needs from the machine, so tests can fake it.
 pub struct Backend {
     pub run: RunFn,
+    pub session: Box<dyn FnMut(&Value) -> Outcome>,
     pub status: Box<dyn FnMut() -> Option<String>>,
     pub info: Box<dyn Fn() -> Result<Value, String>>,
     pub screenshot: ShotFn,
@@ -112,6 +137,7 @@ impl Backend {
     pub fn real() -> Backend {
         Backend {
             run: Box::new(crate::app::run_actions_dyn),
+            session: Box::new(crate::app::session_tool),
             status: Box::new(|| crate::gate::default_gate(&Config::load()).and_then(|mut g| g.status())),
             info: Box::new(|| output_info(Config::load().output().as_deref()).map(|i| serde_json::from_str(&i.to_json()).unwrap_or(Value::Null))),
             screenshot: Box::new(screenshot_bytes),
@@ -135,6 +161,18 @@ fn call_tool(name: &str, args: &Value, b: &mut Backend) -> Result<Value, String>
             };
             let who = args["who"].as_str().filter(|w| !w.is_empty()).unwrap_or("Agent");
             let o = (b.run)(who, &reason, countdown, &actions);
+            let text = o.printed.iter().map(String::as_str).chain(std::iter::once(o.message.as_str())).filter(|s| !s.is_empty()).collect::<Vec<_>>().join("\n");
+            Ok(reply(if text.is_empty() { "done" } else { &text }, o.code != 0, Some(json!({"ok": o.code == 0, "code": o.code, "message": o.message, "printed": o.printed}))))
+        }
+        "session" => {
+            let action = args["action"].as_str().unwrap_or("");
+            if !["start", "status", "end"].contains(&action) {
+                return Ok(reply("action must be start, status or end", true, None));
+            }
+            if action == "start" && args["reason"].as_str().unwrap_or("").trim().is_empty() {
+                return Ok(reply("reason is required: say why you need the session, the person reads it on the card", true, None));
+            }
+            let o = (b.session)(args);
             let text = o.printed.iter().map(String::as_str).chain(std::iter::once(o.message.as_str())).filter(|s| !s.is_empty()).collect::<Vec<_>>().join("\n");
             Ok(reply(if text.is_empty() { "done" } else { &text }, o.code != 0, Some(json!({"ok": o.code == 0, "code": o.code, "message": o.message, "printed": o.printed}))))
         }
@@ -259,6 +297,7 @@ mod tests {
     fn backend() -> Backend {
         Backend {
             run: Box::new(|_, _, _, _| Outcome::default()),
+            session: Box::new(|_| Outcome::default()),
             status: Box::new(|| Some("idle".into())),
             info: Box::new(|| Ok(json!({"name": "X", "width": 100, "height": 50, "scale": 1.0}))),
             screenshot: Box::new(|_| Ok(vec![1, 2, 3])),
@@ -330,7 +369,7 @@ mod tests {
         let list = s.handle(&json!({"jsonrpc": "2.0", "id": 3, "method": "tools/list"})).unwrap();
         assert!(list["result"].get("resultType").is_none());
         let names: Vec<&str> = list["result"]["tools"].as_array().unwrap().iter().map(|t| t["name"].as_str().unwrap()).collect();
-        assert_eq!(names, ["pointer", "screenshot", "screen_info", "gate_status"]);
+        assert_eq!(names, ["pointer", "session", "screenshot", "screen_info", "gate_status"]);
         assert_eq!(s.handle(&json!({"jsonrpc": "2.0", "id": 4, "method": "ping"})).unwrap()["result"], json!({}));
     }
 
@@ -354,7 +393,7 @@ mod tests {
     fn the_pointer_acts_and_the_rest_are_read_only_and_there_is_no_way_to_approve() {
         let tools = tools();
         let ro: Vec<(String, bool)> = tools.as_array().unwrap().iter().map(|t| (t["name"].as_str().unwrap().to_string(), t["annotations"]["readOnlyHint"].as_bool().unwrap())).collect();
-        assert_eq!(ro, [("pointer".to_string(), false), ("screenshot".into(), true), ("screen_info".into(), true), ("gate_status".into(), true)]);
+        assert_eq!(ro, [("pointer".to_string(), false), ("session".into(), false), ("screenshot".into(), true), ("screen_info".into(), true), ("gate_status".into(), true)]);
         for t in tools.as_array().unwrap() {
             assert!(!t["description"].as_str().unwrap().to_lowercase().contains("approve"));
             assert!(t["inputSchema"]["properties"].get("mode").is_none());
@@ -385,6 +424,30 @@ mod tests {
         assert_eq!(r["isError"], true);
         assert_eq!(r["structuredContent"], json!({"ok": false, "code": 4, "message": "Ghosthand: not allowed (denied).", "printed": []}));
         assert!(r["content"][0]["text"].as_str().unwrap().contains("denied"));
+    }
+
+    #[test]
+    fn the_session_tool_needs_an_action_and_a_reason_and_passes_the_request_on() {
+        let seen = std::rc::Rc::new(std::cell::RefCell::new(vec![]));
+        let s2 = seen.clone();
+        let mut b = backend();
+        b.session = Box::new(move |args| { s2.borrow_mut().push(args.clone()); Outcome { printed: vec!["{\"session\":\"started\"}".into()], ..Default::default() } });
+        assert_eq!(call("session", json!({}), &mut b)["isError"], true);
+        assert_eq!(call("session", json!({"action": "dance"}), &mut b)["isError"], true);
+        assert_eq!(call("session", json!({"action": "start"}), &mut b)["isError"], true, "a start needs a reason");
+        assert!(seen.borrow().is_empty(), "none of those reached the machine");
+        let ok = call("session", json!({"action": "start", "reason": "UI testing", "minutes": 20}), &mut b);
+        assert_eq!(ok["isError"], false);
+        assert_eq!(seen.borrow()[0]["minutes"], 20);
+        assert_eq!(call("session", json!({"action": "end"}), &mut b)["isError"], false, "end and status need no reason");
+    }
+
+    #[test]
+    fn there_is_still_no_tool_that_approves_anything() {
+        for t in tools().as_array().unwrap() {
+            let props = t["inputSchema"]["properties"].as_object().cloned().unwrap_or_default();
+            assert!(!props.contains_key("approve") && !props.contains_key("allow") && !props.contains_key("mode"), "{}", t["name"]);
+        }
     }
 
     #[test]

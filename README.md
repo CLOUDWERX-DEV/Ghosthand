@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="CHANGELOG.md"><img alt="version" src="https://img.shields.io/badge/version-0.3.1-3de0ff?style=flat-square"></a>
+  <a href="CHANGELOG.md"><img alt="version" src="https://img.shields.io/badge/version-0.4.0-3de0ff?style=flat-square"></a>
   <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-b26bff?style=flat-square"></a>
   <img alt="rust" src="https://img.shields.io/badge/rust-single%20binary-3de0ff?style=flat-square">
   <img alt="platform" src="https://img.shields.io/badge/Wayland-niri%20first-b26bff?style=flat-square">
@@ -34,7 +34,7 @@ How it works under the hood is simple. Ghosthand creates a virtual absolute poin
 - **A real pointer.** Click, double click, right click, middle click, drag, right drag, scroll both ways, hover.
 - **A real keyboard.** Type text, press shortcuts (`ctrl+shift+t`), hold keys while you click, paste what can't be typed. It reads your actual keyboard layout (QWERTY, AZERTY, Dvorak, German and so on) so it types what it should. [Details](docs/keyboard.md).
 - **Knows where keys will land.** `focus` prints the focused window, so an agent can check before it types.
-- **A gate.** Allow, Allow for N minutes, or Deny, on a card with a countdown. Silence is a no. The card shows what will be typed, and allowing the mouse never allows the keyboard.
+- **A gate.** Allow, Allow for N minutes, or Deny, on a card with a countdown. Or one approval for a whole [session](#sessions-one-approval-for-a-stretch-of-work). Silence is a no. The card shows what will be typed, and allowing the mouse never allows the keyboard.
 - **A visible tag and ring** that follow the cursor while an agent drives it (with the Quickshell overlay, see below).
 - **A panic key.** `ghosthand revoke` stops a running agent, ends any grant and closes the card. Bind it to a key.
 - **Screen coordinates that match screenshots.** You give it pixels from a `grim` screenshot and it handles the scale.
@@ -167,6 +167,21 @@ binds {
     Mod+Ctrl+Alt+Escape allow-inhibiting=false { spawn "ghosthand" "revoke"; }
 }
 ```
+
+## Sessions: one approval for a stretch of work
+
+For a long job, like testing a UI for half an hour with clicks and typing mixed together, asking on every call gets old. A session asks **once**:
+
+```sh
+ghosthand session start --reason "UI testing the settings app" --for 30m
+# one card: "Claude wants to use your mouse and keyboard", the reason, "session for 30 min", [Deny] [Allow]
+ghosthand 'click 400 300' 'type hello' 'key Return'   # no more cards
+ghosthand session end                                 # or revoke, or the time runs out
+```
+
+While it's on, a pill stays on your screen ("Agent Control · mouse and keyboard · 24:10 left" with an End button), so you can always see it, and end it, without a command. It ends by itself when the time is up, after 10 minutes of nobody using it (`--idle`), when you revoke, or when the screen locks.
+
+A session covers only what you approved: a `--scope mouse` session never lets anything type. Asking for one is something an agent can do (there's a `session` MCP tool), but only you can say yes. The dialog fallback shows the same card without "Allow for N min" and uses notifications instead of the pill. [More in docs/sessions.md.](docs/sessions.md)
 
 ## Config
 

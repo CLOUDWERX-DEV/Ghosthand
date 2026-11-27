@@ -33,6 +33,37 @@ Singleton {
             property real ui_scale: 1.0
         }
     }
+    // A session (`ghosthand session start`): one approval for a stretch of work. The file is written by the program and read here, only to
+    // DISPLAY it (the pill with the time left). Whether runs skip the card is decided by the program that checks the same file and the clock.
+    FileView {
+        id: sessionFile
+        path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/ghosthand/session.json"
+        watchChanges: true
+        printErrors: false
+        onFileChanged: reload()
+        adapter: JsonAdapter {
+            id: sess
+            property string who: ""
+            property string reason: ""
+            property string scope: ""
+            property real started: 0
+            property real expires: 0
+            property real idle: 0
+            property real last: 0
+        }
+    }
+    readonly property bool sessionOn: sess.expires > 0 && now / 1000 < sess.expires && now / 1000 - sess.last < sess.idle
+    readonly property real sessionLeft: Math.max(0, sess.expires - now / 1000)
+    readonly property string sessionClock: {
+        const s = Math.floor(sessionLeft), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60;
+        return (h > 0 ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(r).padStart(2, "0");
+    }
+    readonly property bool isSessionAsk: detail.indexOf("session") === 0
+
+    function sessionScope(): string { return sess.scope; }
+    Process { id: endSession; command: ["ghosthand", "session", "end"] }
+    function endTheSession(): void { endSession.running = true; }
+
     readonly property string mode: cfg && ["ask", "notify", "off"].includes(cfg.mode) ? cfg.mode : "ask"
     readonly property int countdownSeconds: Math.max(2, Math.min(60, cfg ? cfg.countdown : 8))
     readonly property int grantMinutes: Math.max(1, Math.min(240, cfg ? cfg.grant_minutes : 10))
@@ -68,7 +99,7 @@ Singleton {
 
     Timer {
         interval: 100
-        running: root.phase !== "idle" || root.toastUntil > root.now
+        running: root.phase !== "idle" || root.toastUntil > root.now || root.sessionOn
         repeat: true
         onTriggered: {
             root.now = Date.now();

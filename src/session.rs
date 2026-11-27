@@ -93,14 +93,19 @@ pub fn execute(who: &str, reason: &str, countdown: u32, raw: &[String], svc: &mu
         return Outcome { printed: out, ..Default::default() };
     }
     if (svc.locked)() {
+        crate::sessions::end(); // locking the screen ends a session
         return fail(EXIT_FAILED, "the session is locked: nothing is touched");
     }
-    let Some(gate) = svc.gate.as_mut() else {
-        return fail(EXIT_NO_GATE, "Ghosthand: nothing is there to ask you, so nothing is touched (there is no way around the gate). Run `ghosthand overlay`, or install zenity, yad or kdialog");
-    };
-    let req = Request { who: who.into(), reason: reason.into(), seconds: countdown, scope: actions::scope(&steps), detail: actions::detail(&steps, 140) };
-    if let Err(e) = gate::wait_for_allow(gate.as_mut(), &req, svc.gate_patience) {
-        return fail(e.code, e.message);
+    let scope = actions::scope(&steps);
+    let in_session = crate::sessions::current().is_some_and(|s| s.covers(&scope));
+    if !in_session {
+        let Some(gate) = svc.gate.as_mut() else {
+            return fail(EXIT_NO_GATE, "Ghosthand: nothing is there to ask you, so nothing is touched (there is no way around the gate). Run `ghosthand overlay`, or install zenity, yad or kdialog");
+        };
+        let req = Request { who: who.into(), reason: reason.into(), seconds: countdown, scope, detail: actions::detail(&steps, 140) };
+        if let Err(e) = gate::wait_for_allow(gate.as_mut(), &req, svc.gate_patience) {
+            return fail(e.code, e.message);
+        }
     }
     let stream = svc.stream.clone();
     stream.borrow_mut().begin(who);
@@ -127,11 +132,47 @@ pub fn execute(who: &str, reason: &str, countdown: u32, raw: &[String], svc: &mu
     if let Some(k) = keyboard { k.close(); }
     if let Some(p) = pointer { p.close(); }
     stream.borrow_mut().end();
+    if in_session {
+        crate::sessions::touch();
+    }
     match outcome {
         Ok(()) => Outcome { printed: out, ..Default::default() },
         Err(Stop::Revoked) => Outcome { code: EXIT_REVOKED, message: format!("Ghosthand: taken back after {done} of {} actions.", steps.len()), printed: out },
         Err(Stop::Failed(e)) => Outcome { code: EXIT_FAILED, message: format!("action {} failed: {e}", done + 1), printed: out },
     }
+}
+
+/// What `ghosthand session start` asks for.
+pub struct SessionRequest {
+    pub who: String,
+    pub reason: String,
+    /// "mouse", "keyboard" or "mouse and keyboard".
+    pub scope: String,
+    pub seconds: f64,
+    pub idle: f64,
+    pub countdown: u32,
+}
+
+/// Ask once for a stretch of work. On Allow, runs that fit the scope skip the card until it ends (see sessions.rs).
+pub fn start_session(req: &SessionRequest, svc: &mut Services) -> Outcome {
+    if (svc.locked)() {
+        return fail(EXIT_FAILED, "the session is locked: nothing is touched");
+    }
+    let Some(gate) = svc.gate.as_mut() else {
+        return fail(EXIT_NO_GATE, "Ghosthand: nothing is there to ask you, so nothing is touched (there is no way around the gate). Run `ghosthand overlay`, or install zenity, yad or kdialog");
+    };
+    // the card reads "session ..." from the detail line, and then offers just Allow and Deny (no "Allow for N min": the session is the time)
+    let detail = format!("session for {} (stops after {} with no use)", crate::sessions::describe(req.seconds), crate::sessions::describe(req.idle));
+    let ask = Request { who: req.who.clone(), reason: req.reason.clone(), seconds: req.countdown, scope: req.scope.clone(), detail };
+    if let Err(e) = gate::wait_for_allow(gate.as_mut(), &ask, svc.gate_patience) {
+        return fail(e.code, e.message);
+    }
+    let session = crate::sessions::Session::new(&req.who, &req.reason, &req.scope, req.seconds, req.idle);
+    if let Err(e) = crate::sessions::start(&session) {
+        return fail(EXIT_FAILED, format!("couldn't start the session: {e}"));
+    }
+    svc.stream.borrow_mut().end(); // the card was "active": hand over to the pill
+    Outcome { printed: vec![serde_json::json!({"session": "started", "scope": req.scope, "minutes": (req.seconds / 60.0).round()}).to_string()], ..Default::default() }
 }
 
 #[cfg(test)]
@@ -285,6 +326,67 @@ mod tests {
         assert_eq!(r.code, 0);
         assert!(r.printed[0].contains("\"scale\":1.0"));
         assert!(t.asked.borrow().is_empty());
+    }
+
+    fn session_request(scope: &str) -> SessionRequest {
+        SessionRequest { who: "Claude".into(), reason: "UI testing".into(), scope: scope.into(), seconds: 1800.0, idle: 600.0, countdown: 0 }
+    }
+
+    #[test]
+    fn a_session_asks_once_then_runs_skip_the_card() {
+        let mut t = rig(&[Some("allowed")]);
+        let r = start_session(&session_request("mouse and keyboard"), &mut t.svc);
+        assert_eq!(r.code, 0, "{}", r.message);
+        assert!(t.asked.borrow()[0].detail.starts_with("session for 30 min"), "the card says it's a session and for how long");
+        assert_eq!(t.asked.borrow()[0].scope, "mouse and keyboard");
+        t.asked.borrow_mut().clear();
+        // no answers left in the gate: a run that needed one would be refused
+        let a = run(&mut t, &["jump 10 10", "type hi"]);
+        assert_eq!(a.code, 0, "{}", a.message);
+        assert!(t.asked.borrow().is_empty(), "inside the session nothing was asked");
+        assert_eq!(*t.made.borrow(), vec!["pointer", "keyboard"]);
+    }
+
+    #[test]
+    fn a_session_never_covers_more_than_it_was_approved_for() {
+        let mut t = rig(&[Some("allowed"), Some("denied")]);
+        assert_eq!(start_session(&session_request("mouse"), &mut t.svc).code, 0);
+        assert_eq!(run(&mut t, &["jump 1 1"]).code, 0, "the mouse is covered");
+        t.asked.borrow_mut().clear();
+        let typed = run(&mut t, &["type hi"]);
+        assert_eq!(t.asked.borrow().len(), 1, "typing asks again");
+        assert_ne!(typed.code, 0);
+    }
+
+    #[test]
+    fn a_denied_session_does_not_start_and_a_revoke_ends_one() {
+        let mut t = rig(&[Some("asking"), Some("denied")]);
+        assert_eq!(start_session(&session_request("mouse"), &mut t.svc).code, EXIT_DENIED);
+        assert!(crate::sessions::current().is_none());
+        let mut t = rig(&[Some("allowed")]);
+        start_session(&session_request("mouse"), &mut t.svc);
+        assert!(crate::sessions::current().is_some());
+        crate::gate::revoke_local();
+        assert!(crate::sessions::current().is_none(), "a revoke ends it");
+    }
+
+    #[test]
+    fn a_locked_screen_ends_a_session() {
+        let mut t = rig(&[Some("allowed")]);
+        start_session(&session_request("mouse"), &mut t.svc);
+        t.svc.locked = Box::new(|| true);
+        assert_eq!(run(&mut t, &["jump 1 1"]).code, EXIT_FAILED);
+        assert!(crate::sessions::current().is_none());
+    }
+
+    #[test]
+    fn a_session_is_not_started_with_nothing_to_ask_with_or_a_locked_screen() {
+        let mut t = rig(&[]);
+        t.svc.gate = None;
+        assert_eq!(start_session(&session_request("mouse"), &mut t.svc).code, EXIT_NO_GATE);
+        let mut t = rig(&[Some("allowed")]);
+        t.svc.locked = Box::new(|| true);
+        assert_eq!(start_session(&session_request("mouse"), &mut t.svc).code, EXIT_FAILED);
     }
 
     #[test]

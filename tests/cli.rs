@@ -131,5 +131,40 @@ fn mcp_speaks_the_current_spec_over_stdio() {
     let lines: Vec<serde_json::Value> = text(&out.stdout).lines().map(|l| serde_json::from_str(l).unwrap()).collect();
     assert_eq!(lines.len(), 2);
     assert_eq!(lines[0]["result"]["supportedVersions"][0], "2026-07-28");
-    assert_eq!(lines[1]["result"]["tools"].as_array().unwrap().len(), 4);
+    assert_eq!(lines[1]["result"]["tools"].as_array().unwrap().len(), 5);
+}
+
+#[test]
+fn sessions_have_a_status_an_end_and_a_careful_start() {
+    let d = sandbox("session");
+    let status = ghosthand(&d, &["session", "status"]);
+    assert_eq!(status.status.code(), Some(0));
+    assert!(text(&status.stdout).contains("\"active\":false"));
+    assert_eq!(ghosthand(&d, &["session", "start"]).status.code(), Some(2), "a session needs a reason");
+    assert_eq!(ghosthand(&d, &["session", "start", "--reason", "x", "--for", "99h"]).status.code(), Some(2), "too long");
+    assert_eq!(ghosthand(&d, &["session", "start", "--reason", "x", "--scope", "everything"]).status.code(), Some(2));
+    assert_eq!(ghosthand(&d, &["session", "start", "--reason", "x", "--bogus", "1"]).status.code(), Some(2));
+    assert_eq!(ghosthand(&d, &["session", "frobnicate"]).status.code(), Some(2));
+    // with nothing to ask with, a session can't start (and nothing is created)
+    let none = ghosthand(&d, &["session", "start", "--reason", "UI testing", "--for", "30m"]);
+    assert!(matches!(none.status.code(), Some(1) | Some(5)), "{}", text(&none.stderr));
+    assert!(!d.join("run/ghosthand/session.json").exists());
+    assert_eq!(ghosthand(&d, &["session", "end"]).status.code(), Some(0));
+}
+
+#[test]
+fn a_session_file_that_covers_the_request_lets_a_gated_run_through_without_asking_and_a_revoke_ends_it() {
+    let d = sandbox("sessionrun");
+    std::fs::create_dir_all(d.join("run/ghosthand")).unwrap();
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs_f64();
+    let file = d.join("run/ghosthand/session.json");
+    // scope "mouse": a keyboard request is NOT covered, so with nothing to ask with it's refused (exit 5)
+    std::fs::write(&file, format!(r#"{{"who":"T","reason":"r","scope":"mouse","started":{now},"expires":{},"idle":600,"last":{now}}}"#, now + 600.0)).unwrap();
+    std::fs::write(d.join("cfg/ghosthand/config.json").parent().map(|p| { std::fs::create_dir_all(p).unwrap(); p.join("config.json") }).unwrap(), r#"{"lock_check":"echo no"}"#).unwrap();
+    let typed = ghosthand(&d, &["--who", "T", "--reason", "x", "type hi"]);
+    assert_eq!(typed.status.code(), Some(5), "a mouse session doesn't cover typing: {}", text(&typed.stderr));
+    let status = text(&ghosthand(&d, &["session", "status"]).stdout);
+    assert!(status.contains("\"active\":true") && status.contains("\"scope\":\"mouse\""), "{status}");
+    ghosthand(&d, &["revoke"]);
+    assert!(!file.exists(), "a revoke ends the session");
 }

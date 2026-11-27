@@ -79,6 +79,22 @@ Each action is **one quoted argument**. Several in one call run in order.
 
 A typo in any action, an unknown key, or a character the keyboard layout can't type is caught before anything moves or is typed, so a bad call can't leave a drag half done.
 
+## Sessions (for long jobs)
+
+If you will do many steps (UI testing, a walkthrough), ask for **one** approval up front instead of one per call:
+
+```sh
+ghosthand session start --who Claude --reason "UI testing the settings app" --for 30m
+```
+
+The user sees one card with your reason, what it covers and how long, and a pill stays on their screen with a time-left and an End button. After they allow it, calls inside the scope run without a card. Rules:
+
+- **Give a real reason and a fair duration.** 30 minutes is the default; ask for what the job needs, not the maximum. `--scope mouse` if you won't type.
+- **A session never covers more than was approved.** If it was `mouse` only, typing asks again.
+- **Denied or no answer (exit 4): stop and tell the user.** Don't retry.
+- **It ends** on the time, after 10 idle minutes, if the user ends or revokes it (exit 3), or when the screen locks. Check with `ghosthand session status`, and end it yourself with `ghosthand session end` when the job is done.
+- Over MCP the same thing is the `session` tool with `action` `start`, `status` or `end`.
+
 ## Keyboard
 
 Keys go to whatever window has focus, so **click the field first**, then `focus` to check, then type.
@@ -110,7 +126,7 @@ The user is watching. A card shows your `--who` and `--reason`, then a tag and r
 - **Always set `--who` and a specific `--reason`.** "Checking the Tabs panel after the layout change" is good. "testing" is not.
 - **Denied or no answer (exit 4): stop.** Tell the user it was declined and ask what they want. Never retry in a loop, never ask again immediately, never look for a way around the gate. Do not write to `/dev/uinput` yourself, or use `wtype`, `xdotool`, `ydotool` or anything else to move the pointer or press keys to dodge it.
 - **Taken back (exit 3):** the user pressed their revoke key. Stop at once and say so. Don't resume unless they ask.
-- **The user may Allow for N minutes.** Later calls then go straight through. Still keep each run short and purposeful.
+- **The user may Allow for N minutes, or approve a session.** Later calls then go straight through. Still keep each run short and purposeful, and end a session when you are done.
 - **Never touch anything destructive** (delete, send, buy, close unsaved work, power) without the user having asked for exactly that.
 - **The session being locked is a refusal (exit 1).** Don't try to get past a lock screen.
 
@@ -141,4 +157,4 @@ The user is watching. A card shows your `--who` and `--reason`, then a tag and r
 
 ## If your host prefers MCP
 
-`ghosthand mcp` serves the same thing over stdio with the tools `pointer` (which takes the same actions, keyboard included), `screenshot`, `screen_info` and `gate_status`. Same gate, same rules above apply. There is no tool to approve a request: that is always the user's job.
+`ghosthand mcp` serves the same thing over stdio with the tools `pointer` (which takes the same actions, keyboard included), `session`, `screenshot`, `screen_info` and `gate_status`. Same gate, same rules above apply. There is no tool to approve a request: that is always the user's job.
