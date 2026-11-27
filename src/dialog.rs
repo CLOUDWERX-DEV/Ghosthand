@@ -29,13 +29,31 @@ pub fn command(tool: &str, who: &str, reason: &str, seconds: u32, minutes: u32, 
     }
     text += "Nothing happens until you allow it.";
     let grant = format!("Allow for {minutes} min");
+    let session = detail.starts_with("session"); // a session is its own time: just Allow and Deny
     let v: Vec<String> = match tool {
         "zenity" => vec!["zenity".into(), "--question".into(), "--default-cancel".into(), "--title=Ghosthand".into(), format!("--text={text}"), "--ok-label=Allow".into(), "--cancel-label=Deny".into(), format!("--extra-button={grant}"), format!("--timeout={seconds}"), "--no-markup".into()],
         "yad" => vec!["yad".into(), "--title=Ghosthand".into(), "--image=input-mouse".into(), format!("--text={text}"), "--button=Deny:1".into(), format!("--button={grant}:2"), "--button=Allow:0".into(), format!("--timeout={seconds}"), "--center".into(), "--on-top".into()],
         "notify-send" => vec!["notify-send".into(), "-a".into(), "Ghosthand".into(), "-u".into(), "critical".into(), "-t".into(), (seconds * 1000).to_string(), "-A".into(), "allow=Allow".into(), "-A".into(), format!("grant={grant}"), "-A".into(), "deny=Deny".into(), format!("{who} wants to use your {scope}"), text.replacen(&format!("{who} wants to use your {scope}.\n\n"), "", 1)],
+        _ if session => vec!["kdialog".into(), "--title".into(), "Ghosthand".into(), "--warningyesno".into(), text, "--yes-label".into(), "Allow".into(), "--no-label".into(), "Deny".into()],
         _ => vec!["kdialog".into(), "--title".into(), "Ghosthand".into(), "--warningyesnocancel".into(), text, "--yes-label".into(), "Allow".into(), "--no-label".into(), grant, "--cancel-label".into(), "Deny".into()],
     };
-    v
+    if !session {
+        return v;
+    }
+    // no "Allow for N min" on a session card
+    let mut out = Vec::with_capacity(v.len());
+    let mut it = v.into_iter().peekable();
+    while let Some(a) = it.next() {
+        if a.starts_with("--extra-button=") || a.starts_with("--button=Allow for") {
+            continue;
+        }
+        if a == "-A" && it.peek().is_some_and(|n| n.starts_with("grant=")) {
+            it.next();
+            continue;
+        }
+        out.push(a);
+    }
+    out
 }
 
 #[derive(Debug, PartialEq)]
@@ -258,6 +276,17 @@ mod tests {
         g.ask(&req("mouse"));
         assert_eq!(g.status().as_deref(), Some("denied"));
         assert!(!paths::grant_file("").exists(), "and no grant is written");
+    }
+
+    #[test]
+    fn a_session_card_has_no_allow_for_n_minutes() {
+        for tool in ["zenity", "yad", "kdialog", "notify-send"] {
+            let plain = command(tool, "C", "why", 8, 10, "mouse", "").join("|");
+            let session = command(tool, "C", "why", 8, 10, "mouse and keyboard", "session for 30 min (stops after 10 min with no use)").join("|");
+            assert!(plain.contains("Allow for 10 min"), "{tool}: a normal card offers it");
+            assert!(!session.contains("Allow for 10 min") && !session.contains("grant="), "{tool}: a session card doesn't: {session}");
+            assert!(session.contains("session for 30 min"), "{tool}: it says how long");
+        }
     }
 
     #[test]

@@ -76,6 +76,7 @@ pub fn revoke_local() {
     for kind in ["", "keys"] {
         let _ = std::fs::remove_file(paths::grant_file(kind));
     }
+    crate::sessions::end(); // a revoke ends a session too
 }
 
 /// Was the pointer taken back after `since`?

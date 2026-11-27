@@ -15,6 +15,7 @@ mod paths;
 mod pointer;
 mod screen;
 mod session;
+mod sessions;
 mod uinput;
 mod util;
 mod windows;
@@ -31,6 +32,7 @@ fn help() -> String {
 
 usage:
   ghosthand [--who NAME] [--reason TEXT] [--countdown N] ACTION...    drive the pointer and keyboard (each action is one quoted argument)
+  ghosthand session start|end|status   one approval for a stretch of work (see below)
   ghosthand overlay                 run the overlay: the allow/deny card and the cursor tag (Quickshell; X11/GNOME use a dialog instead)
   ghosthand revoke                  take the pointer back now, from anywhere (bind it to a key)
   ghosthand status                  idle | asking | active | allowed | denied | timeout | revoked
@@ -61,6 +63,10 @@ actions (coordinates are SCREENSHOT PIXELS of the output, the ones `grim` writes
   keydown COMBO        hold keys (release with keyup): keydown shift, click, keyup shift
   type TEXT            type text with your real layout (\n is Enter, \t is Tab): type git status\n
   paste TEXT           clipboard + Ctrl+V, for text `type` can't make (emoji); the clipboard is put back
+
+sessions (one card, then no more cards until it ends):
+  ghosthand session start --reason "UI testing the settings app" [--for 30m] [--idle 10m] [--scope both|mouse|keyboard] [--who NAME]
+  ghosthand session status      ghosthand session end      (a revoke, the time running out, or locking the screen end it too)
 
 example:
   ghosthand --who Claude --reason "Checking the bar menu" 'jump 800 26' 'wait 0.4' 'rclick' 'wait 0.8' 'shot /tmp/menu.png'
@@ -101,6 +107,7 @@ fn run(args: &[String]) -> i32 {
         "setup" => doctor::setup(&cfg),
         "doctor" => doctor::doctor(&cfg),
         "skill" => doctor::skill(&args[1..]),
+        "session" => session_cmd(&args[1..]),
         "mcp" => mcp::serve(std::io::stdin().lock(), std::io::stdout(), mcp::Backend::real()),
         "daemon" => daemon::serve(std::time::Duration::from_secs(cfg.daemon_idle_seconds())),
         _ => {
@@ -116,6 +123,67 @@ fn run(args: &[String]) -> i32 {
                 eprintln!("{}", outcome.message);
             }
             outcome.code
+        }
+    }
+}
+
+fn session_cmd(rest: &[String]) -> i32 {
+    match rest.first().map(String::as_str) {
+        Some("end") => {
+            sessions::end();
+            println!("session ended");
+            0
+        }
+        Some("status") | None => {
+            match sessions::current() {
+                Some(s) => {
+                    let t = util::now();
+                    println!("{}", serde_json::json!({"active": true, "who": s.who, "reason": s.reason, "scope": s.scope, "seconds_left": s.remaining(t).round(),
+                        "idle_stop_in": (s.idle - (t - s.last)).max(0.0).round()}));
+                }
+                None => println!("{}", serde_json::json!({"active": false})),
+            }
+            0
+        }
+        Some("start") => {
+            let (mut who, mut reason, mut seconds, mut idle, mut scope, mut countdown) = ("Agent".to_string(), String::new(), sessions::DEFAULT_SECONDS, sessions::DEFAULT_IDLE, "mouse and keyboard".to_string(), 0u32);
+            let mut it = rest[1..].iter();
+            while let Some(a) = it.next() {
+                let Some(value) = it.next() else { eprintln!("{a} needs a value"); return EXIT_USAGE };
+                let parsed: Result<(), String> = match a.as_str() {
+                    "--who" => { who = value.clone(); Ok(()) }
+                    "--reason" => { reason = value.clone(); Ok(()) }
+                    "--for" => sessions::parse_duration(value).map(|d| seconds = d),
+                    "--idle" => sessions::parse_duration(value).map(|d| idle = d),
+                    "--countdown" => value.parse().map(|n| countdown = n).map_err(|_| "--countdown needs a whole number of seconds".to_string()),
+                    "--scope" => match value.as_str() {
+                        "both" | "mouse and keyboard" => { scope = "mouse and keyboard".into(); Ok(()) }
+                        "mouse" | "keyboard" => { scope = value.clone(); Ok(()) }
+                        _ => Err("--scope is both, mouse or keyboard".into()),
+                    },
+                    other => Err(format!("unknown option {other}")),
+                };
+                if let Err(e) = parsed {
+                    eprintln!("{e}");
+                    return EXIT_USAGE;
+                }
+            }
+            if reason.trim().is_empty() {
+                eprintln!("a session needs a --reason: it's what you read on the card");
+                return EXIT_USAGE;
+            }
+            let outcome = app::start_session(&session::SessionRequest { who, reason, scope, seconds, idle, countdown });
+            for line in &outcome.printed {
+                println!("{line}");
+            }
+            if !outcome.message.is_empty() {
+                eprintln!("{}", outcome.message);
+            }
+            outcome.code
+        }
+        Some(other) => {
+            eprintln!("usage: ghosthand session start|end|status (not '{other}')");
+            EXIT_USAGE
         }
     }
 }

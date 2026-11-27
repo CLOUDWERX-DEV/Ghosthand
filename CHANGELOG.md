@@ -2,6 +2,22 @@
 
 All notable changes to Ghosthand are in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.4.0] - 2026-11-27
+
+Sessions: one approval for a stretch of work.
+
+### Added
+
+- **`ghosthand session start|end|status`**: ask once for a long job (UI testing, say) and runs that fit what was approved skip the card until it ends. Options: `--reason` (required, shown on the card), `--for` (default 30m, up to 8h), `--idle` (default 10m), `--scope both|mouse|keyboard` and `--who`.
+- **A pill on screen** while a session is on, with the time left and an End button, in the overlay. The dialog fallback shows the same card (without "Allow for N min") and a notification instead of a pill.
+- A session ends on its time, after the idle time with no use, on End, `session end` or a revoke, and when the screen locks. It never covers more than was approved: a mouse session still asks before anything types. It's refused on a locked screen, and with nothing to ask with it doesn't start.
+- **A `session` MCP tool** (`start`, `status`, `end`). An agent can ask for a session, never approve one.
+- The agent skill and docs (`docs/sessions.md`) explain when to ask for a session and how it ends.
+
+### Changed
+
+- The overlay window now stays up for as long as a session lasts, so the pill is always visible.
+
 ## [0.3.1] - 2026-11-26
 
 Cleanup, a fuller contributing guide and more tests.
@@ -102,6 +118,7 @@ First public release.
 - Unit tests for the gate, actions, session and MCP, run in CI.
 - Docs: setup, configuration, how it works, MCP, other compositors, security and contributing.
 
+[0.4.0]: https://github.com/CLOUDWERX-DEV/Ghosthand/releases/tag/v0.4.0
 [0.3.1]: https://github.com/CLOUDWERX-DEV/Ghosthand/releases/tag/v0.3.1
 [0.3.0]: https://github.com/CLOUDWERX-DEV/Ghosthand/releases/tag/v0.3.0
 [0.2.0]: https://github.com/CLOUDWERX-DEV/Ghosthand/releases/tag/v0.2.0
