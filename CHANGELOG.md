@@ -2,6 +2,12 @@
 
 All notable changes to Ghosthand are in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.4.1] - 2026-11-27
+
+### Changed
+
+- The note to autonomous agents in `CONTRIBUTING.md` is part of the tagged release. No code changed.
+
 ## [0.4.0] - 2026-11-27
 
 Sessions: one approval for a stretch of work.
@@ -118,6 +124,7 @@ First public release.
 - Unit tests for the gate, actions, session and MCP, run in CI.
 - Docs: setup, configuration, how it works, MCP, other compositors, security and contributing.
 
+[0.4.1]: https://github.com/CLOUDWERX-DEV/Ghosthand/releases/tag/v0.4.1
 [0.4.0]: https://github.com/CLOUDWERX-DEV/Ghosthand/releases/tag/v0.4.0
 [0.3.1]: https://github.com/CLOUDWERX-DEV/Ghosthand/releases/tag/v0.3.1
 [0.3.0]: https://github.com/CLOUDWERX-DEV/Ghosthand/releases/tag/v0.3.0
