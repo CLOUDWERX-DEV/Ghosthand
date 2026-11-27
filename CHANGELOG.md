@@ -2,6 +2,12 @@
 
 All notable changes to Ghosthand are in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.4.3] - 2026-11-27
+
+### Fixed
+
+- The first session pill after the overlay starts could come up too narrow, with the time and End button cut off. The pill's window is now a fixed width with the pill centred in it, and a mask hands every click outside the pill back to the desktop.
+
 ## [0.4.2] - 2026-11-27
 
 Session pill fixes, and fewer cards.

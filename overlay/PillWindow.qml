@@ -18,11 +18,15 @@ PanelWindow {
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.namespace: "ghosthand-session"
-    implicitWidth: pill.width
-    implicitHeight: pill.height
+    // A fixed, roomy window with the pill centred in it, and a mask that gives every click outside the pill back to the desktop. (A window
+    // that sizes itself to the pill could be mapped before the pill's text was measured, and stay too narrow.)
+    implicitWidth: Math.round(760 * Theme.scale)
+    implicitHeight: Math.round(34 * Theme.scale)
+    mask: Region { item: pill }
 
     Rectangle {
         id: pill
+        anchors.horizontalCenter: parent.horizontalCenter
         readonly property int padLeft: Math.round(14 * Theme.scale)
         readonly property int padRight: Math.round(5 * Theme.scale)
         width: padLeft + row.implicitWidth + padRight
